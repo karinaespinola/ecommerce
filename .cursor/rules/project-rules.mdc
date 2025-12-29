@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+
+# Project Overview
+
+This is a Laravel e-commerce application built with the Laravel Starter Kit for React. The project uses Inertia.js to connect the Laravel backend with React frontend components.
+
+## Core Features
+
+### User Management & Authentication
+- User authentication system (clients can log in to their accounts)
+- Guest checkout functionality (users can make purchases without creating an account)
+- Admin dashboard for managing the platform
+
+### E-Commerce Functionality
+- **Product Catalog**: Users can browse and view products
+- **Shopping Cart**: Users can add products to a shopping cart
+- **Order Management**: Users can place orders (both authenticated users and guests)
+- **Inventory Management**: Admin can manage product inventory
+
+### Architecture
+- **Backend**: Laravel (PHP)
+- **Frontend**: React with Inertia.js
+- **Authentication**: Laravel Fortify (based on the project structure)
+- **Database**: SQLite (development) with migrations for production flexibility
+
+## Development Guidelines
+- Follow Laravel best practices and conventions
+- Use React components for frontend UI
+- Maintain separation between admin and client-facing features
+- Ensure guest checkout flow is seamless and secure
