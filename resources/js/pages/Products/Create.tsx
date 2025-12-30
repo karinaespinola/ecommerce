@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
 import InputError from '@/components/input-error';
+import ProductVariantsManager from '@/components/ProductVariantsManager';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -24,8 +25,16 @@ interface Category {
     name: string;
 }
 
+interface Attribute {
+    id: number;
+    name: string;
+    slug: string;
+    is_active: boolean;
+}
+
 interface ProductsCreateProps {
     categories: Category[];
+    attributes: Attribute[];
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -42,7 +51,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function ProductsCreate({ categories }: ProductsCreateProps) {
+export default function ProductsCreate({ categories, attributes }: ProductsCreateProps) {
     const [processing, setProcessing] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
     const [isActive, setIsActive] = useState(true);
@@ -194,6 +203,11 @@ export default function ProductsCreate({ categories }: ProductsCreateProps) {
                             </div>
                         </CardContent>
                     </Card>
+
+                    <ProductVariantsManager
+                        attributes={attributes}
+                        isVariable={isVariable}
+                    />
 
                     {categories.length > 0 && (
                         <Card>

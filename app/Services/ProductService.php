@@ -94,6 +94,19 @@ class ProductService
             $product->categories()->sync($categoryIds);
         }
 
+        if(isset($data['attributes'])) {
+            foreach($data['attributes'] as $attribute) {
+                $product->variants()->create([
+                    'name' => $attribute['name'],
+                    'sku' => $attribute['sku'],
+                    'price' => $attribute['price'],
+                    'stock' => $attribute['stock'],
+                ]);
+
+                $product->variants()->first()->attributes()->attach($attribute['id'], ['value' => $attribute['value']]);
+            }
+        }
+
         return $product->load(['categories', 'variants']);
     }
 

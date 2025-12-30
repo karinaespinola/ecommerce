@@ -30,6 +30,9 @@ class StoreProductRequest extends FormRequest
             'is_variable' => ['boolean'],
             'category_ids' => ['nullable', 'array'],
             'category_ids.*' => ['exists:categories,id'],
+            'attributes' => ['nullable', 'array'],
+            'attributes.*.attribute_id' => ['required', 'exists:attributes,id'],
+            'attributes.*.value' => ['required', 'string'],
         ];
     }
 }

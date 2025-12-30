@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Services\AttributeService;
 use App\Services\CategoryService;
 use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,8 @@ class ProductController extends Controller
 {
     public function __construct(
         protected ProductService $productService,
-        protected CategoryService $categoryService
+        protected CategoryService $categoryService,
+        protected AttributeService $attributeService
     ) {
     }
 
@@ -49,9 +51,11 @@ class ProductController extends Controller
     public function create(): Response
     {
         $categories = $this->categoryService->getAllWithoutPagination();
+        $attributes = $this->attributeService->getAllWithoutPagination();
 
         return Inertia::render('Products/Create', [
             'categories' => $categories,
+            'attributes' => $attributes,
         ]);
     }
 
@@ -60,7 +64,7 @@ class ProductController extends Controller
      */
     public function store(StoreProductRequest $request): RedirectResponse
     {
-        $product = $this->productService->create($request->validated());
+        $this->productService->create($request->validated());
 
         return redirect()
             ->route('products.index')
@@ -99,10 +103,12 @@ class ProductController extends Controller
         }
 
         $categories = $this->categoryService->getAllWithoutPagination();
+        $attributes = $this->attributeService->getAllWithoutPagination();
 
         return Inertia::render('Products/Edit', [
             'product' => $product,
             'categories' => $categories,
+            'attributes' => $attributes,
         ]);
     }
 
