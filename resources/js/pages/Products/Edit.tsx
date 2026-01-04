@@ -44,6 +44,14 @@ interface Product {
     categories: Category[];
 }
 
+interface VariantData {
+    attributes: Record<number, string>;
+    price: string;
+    stock: string;
+    images: File[];
+    sku?: string;
+}
+
 interface ProductsEditProps {
     product: Product;
     categories: Category[];
@@ -75,6 +83,7 @@ export default function ProductsEdit({
     );
     const [isActive, setIsActive] = useState(product.is_active);
     const [isVariable, setIsVariable] = useState(product.is_variable);
+    const [variants, setVariants] = useState<VariantData[]>([]);
     const { errors } = usePage().props;
 
     const handleCategoryToggle = (categoryId: number) => {
@@ -96,6 +105,27 @@ export default function ProductsEdit({
         selectedCategories.forEach((id) => {
             formData.append('category_ids[]', id.toString());
         });
+
+        // Add variants data if it's a variable product
+        if (isVariable && variants.length > 0) {
+            variants.forEach((variant, index) => {
+                // Add attributes for this variant
+                Object.entries(variant.attributes).forEach(([attrId, value]) => {
+                    formData.append(`variants[${index}][attributes][${attrId}]`, value);
+                });
+                formData.append(`variants[${index}][price]`, variant.price);
+                formData.append(`variants[${index}][stock]`, variant.stock);
+                if (variant.sku) {
+                    formData.append(`variants[${index}][sku]`, variant.sku);
+                }
+                // Add multiple images for this variant
+                if (variant.images && variant.images.length > 0) {
+                    variant.images.forEach((image) => {
+                        formData.append(`variants[${index}][images][]`, image);
+                    });
+                }
+            });
+        }
 
         router.put(`/products/${product.id}`, formData, {
             preserveScroll: true,
@@ -227,6 +257,7 @@ export default function ProductsEdit({
                     <ProductVariantsManager
                         attributes={attributes}
                         isVariable={isVariable}
+                        onVariantsChange={setVariants}
                     />
 
                     {categories.length > 0 && (

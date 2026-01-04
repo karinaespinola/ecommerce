@@ -1,5 +1,5 @@
 import { Plus, X } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 
 import AttributeModal from '@/components/AttributeModal';
 import { Button } from '@/components/ui/button';
@@ -27,19 +27,30 @@ interface AttributeWithValues {
     values: string[];
 }
 
+interface VariantData {
+    attributes: Record<number, string>;
+    price: string;
+    stock: string;
+    images: File[];
+    sku?: string;
+}
+
 interface ProductVariantsManagerProps {
     attributes: Attribute[];
     isVariable: boolean;
+    onVariantsChange?: (variants: VariantData[]) => void;
 }
 
 export default function ProductVariantsManager({
     attributes,
     isVariable,
+    onVariantsChange,
 }: ProductVariantsManagerProps) {
     const [selectedAttributes, setSelectedAttributes] = useState<AttributeWithValues[]>([]);
     const [isAttributeModalOpen, setIsAttributeModalOpen] = useState(false);
     const [availableAttributes, setAvailableAttributes] = useState<Attribute[]>(attributes);
     const [newValueInputs, setNewValueInputs] = useState<Record<number, string>>({});
+    const [variantData, setVariantData] = useState<Record<string, VariantData>>({});
 
     useEffect(() => {
         setAvailableAttributes(attributes);
@@ -180,6 +191,87 @@ export default function ProductVariantsManager({
         return combinations;
     }, [selectedAttributes]);
 
+    // Generate a unique key for each variant based on its attributes
+    const getVariantKey = useCallback((variant: Record<number, string>): string => {
+        return Object.entries(variant)
+            .sort(([a], [b]) => parseInt(a) - parseInt(b))
+            .map(([id, value]) => `${id}:${value}`)
+            .join('|');
+    }, []);
+
+    // Initialize variant data when variants are generated
+    // Preserve existing data when combinations change
+    useEffect(() => {
+        setVariantData((prevVariantData) => {
+            const newVariantData: Record<string, VariantData> = {};
+            generateVariants.forEach((variant) => {
+                const key = getVariantKey(variant);
+                if (prevVariantData[key]) {
+                    // Preserve existing data, only update attributes
+                    newVariantData[key] = {
+                        ...prevVariantData[key],
+                        attributes: variant,
+                    };
+                } else {
+                    // Create new variant with default values
+                    newVariantData[key] = {
+                        attributes: variant,
+                        price: '',
+                        stock: '',
+                        images: [],
+                        sku: '',
+                    };
+                }
+            });
+            return newVariantData;
+        });
+    }, [generateVariants, getVariantKey]);
+
+    // Notify parent component when variant data changes
+    useEffect(() => {
+        if (onVariantsChange) {
+            const variants = Object.values(variantData);
+            onVariantsChange(variants);
+        }
+    }, [variantData, onVariantsChange]);
+
+    const handleVariantFieldChange = (
+        variantKey: string,
+        field: keyof VariantData,
+        value: string | File[]
+    ) => {
+        setVariantData((prev) => ({
+            ...prev,
+            [variantKey]: {
+                ...prev[variantKey],
+                [field]: value,
+            },
+        }));
+    };
+
+    const handleImageChange = (variantKey: string, files: FileList | null) => {
+        if (files) {
+            const fileArray = Array.from(files);
+            handleVariantFieldChange(variantKey, 'images', fileArray);
+        } else {
+            handleVariantFieldChange(variantKey, 'images', []);
+        }
+    };
+
+    const handleRemoveImage = (variantKey: string, imageIndex: number) => {
+        setVariantData((prev) => {
+            const current = prev[variantKey];
+            const newImages = current.images.filter((_, idx) => idx !== imageIndex);
+            return {
+                ...prev,
+                [variantKey]: {
+                    ...current,
+                    images: newImages,
+                },
+            };
+        });
+    };
+
     if (!isVariable) {
         return null;
     }
@@ -190,7 +282,7 @@ export default function ProductVariantsManager({
                 <CardHeader>
                     <CardTitle>Product Variants</CardTitle>
                     <CardDescription>
-                        Select attributes and add values for each. All variants will include all selected attributes.
+                        Select attributes and add values for each. All combinations of attribute values will be generated as variants below.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -331,36 +423,166 @@ export default function ProductVariantsManager({
                         </Button>
                     </div>
 
-                    {generateVariants.length > 0 && (
-                        <div className="mt-6 space-y-3 p-4 bg-muted rounded-lg">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-sm font-semibold">
-                                    Generated Variants ({generateVariants.length})
-                                </Label>
-                                <p className="text-xs text-muted-foreground">
-                                    All variants include all selected attributes
-                                </p>
-                            </div>
-                            <div className="grid gap-2 text-sm">
-                                {generateVariants.map((variant, idx) => {
-                                    const variantString = Object.entries(variant)
-                                        .map(([attrId, value]) => {
-                                            const attr = availableAttributes.find(
-                                                (a) => a.id === parseInt(attrId)
-                                            );
-                                            return `${attr?.name || 'Unknown'}: ${value}`;
-                                        })
-                                        .join(' • ');
+                    {selectedAttributes.length > 0 && generateVariants.length === 0 && (
+                        <div className="mt-6 p-4 border rounded-lg bg-muted/30">
+                            <p className="text-sm text-muted-foreground">
+                                Add values to the selected attributes above to generate variants. Each combination of attribute values will create a separate variant.
+                            </p>
+                        </div>
+                    )}
 
-                                    return (
-                                        <div
-                                            key={idx}
-                                            className="p-2 bg-background rounded border text-muted-foreground"
-                                        >
-                                            {variantString}
-                                        </div>
-                                    );
-                                })}
+                    {generateVariants.length > 0 && (
+                        <div className="mt-6 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label className="text-base font-semibold">
+                                        Generated Variants
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        {generateVariants.length} variant{generateVariants.length !== 1 ? 's' : ''} will be created
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div className="border rounded-lg overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-muted/50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-sm font-semibold">Variation</th>
+                                                <th className="px-4 py-3 text-left text-sm font-semibold">
+                                                    Price <span className="text-destructive">*</span>
+                                                </th>
+                                                <th className="px-4 py-3 text-left text-sm font-semibold">
+                                                    Stock <span className="text-destructive">*</span>
+                                                </th>
+                                                <th className="px-4 py-3 text-left text-sm font-semibold">SKU</th>
+                                                <th className="px-4 py-3 text-left text-sm font-semibold">Images</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {generateVariants.map((variant, idx) => {
+                                                const variantKey = getVariantKey(variant);
+                                                const data = variantData[variantKey] || {
+                                                    attributes: variant,
+                                                    price: '',
+                                                    stock: '',
+                                                    images: [],
+                                                    sku: '',
+                                                };
+                                                const variantString = Object.entries(variant)
+                                                    .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                                                    .map(([attrId, value]) => {
+                                                        const attr = availableAttributes.find(
+                                                            (a) => a.id === parseInt(attrId)
+                                                        );
+                                                        return `${attr?.name || 'Unknown'}: ${value}`;
+                                                    })
+                                                    .join(', ');
+
+                                                return (
+                                                    <tr key={idx} className="hover:bg-muted/30">
+                                                        <td className="px-4 py-3">
+                                                            <div className="text-sm font-medium">
+                                                                {variantString}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <Input
+                                                                id={`price-${idx}`}
+                                                                type="number"
+                                                                step="0.01"
+                                                                min="0"
+                                                                value={data.price}
+                                                                onChange={(e) =>
+                                                                    handleVariantFieldChange(
+                                                                        variantKey,
+                                                                        'price',
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                placeholder="0.00"
+                                                                required
+                                                                className="w-32"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <Input
+                                                                id={`stock-${idx}`}
+                                                                type="number"
+                                                                min="0"
+                                                                value={data.stock}
+                                                                onChange={(e) =>
+                                                                    handleVariantFieldChange(
+                                                                        variantKey,
+                                                                        'stock',
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                placeholder="0"
+                                                                required
+                                                                className="w-32"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <Input
+                                                                id={`sku-${idx}`}
+                                                                value={data.sku || ''}
+                                                                onChange={(e) =>
+                                                                    handleVariantFieldChange(
+                                                                        variantKey,
+                                                                        'sku',
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                placeholder="Optional"
+                                                                className="w-32"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="space-y-2 min-w-[200px]">
+                                                                <Input
+                                                                    id={`images-${idx}`}
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    multiple
+                                                                    onChange={(e) => {
+                                                                        handleImageChange(variantKey, e.target.files);
+                                                                    }}
+                                                                    className="cursor-pointer text-xs"
+                                                                />
+                                                                {data.images && data.images.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-1.5">
+                                                                        {data.images.map((image, imgIdx) => (
+                                                                            <Badge
+                                                                                key={imgIdx}
+                                                                                variant="secondary"
+                                                                                className="flex items-center gap-1 px-2 py-0.5 text-xs"
+                                                                            >
+                                                                                <span className="truncate max-w-[120px]">
+                                                                                    {image.name}
+                                                                                </span>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() =>
+                                                                                        handleRemoveImage(variantKey, imgIdx)
+                                                                                    }
+                                                                                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                                                                                >
+                                                                                    <X className="size-3" />
+                                                                                </button>
+                                                                            </Badge>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}

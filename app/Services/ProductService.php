@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductService
@@ -94,20 +97,12 @@ class ProductService
             $product->categories()->sync($categoryIds);
         }
 
-        if(isset($data['attributes'])) {
-            foreach($data['attributes'] as $attribute) {
-                $product->variants()->create([
-                    'name' => $attribute['name'],
-                    'sku' => $attribute['sku'],
-                    'price' => $attribute['price'],
-                    'stock' => $attribute['stock'],
-                ]);
-
-                $product->variants()->first()->attributes()->attach($attribute['id'], ['value' => $attribute['value']]);
-            }
+        // Handle variants if it's a variable product
+        if (isset($data['variants']) && is_array($data['variants'])) {
+            $this->createVariants($product, $data['variants']);
         }
 
-        return $product->load(['categories', 'variants']);
+        return $product->load(['categories', 'variants.attributes']);
     }
 
     /**
@@ -140,7 +135,18 @@ class ProductService
             $product->categories()->sync($categoryIds);
         }
 
-        return $product->fresh(['categories', 'variants']);
+        // Handle variants if it's a variable product
+        if (isset($data['variants']) && is_array($data['variants'])) {
+            // Delete existing variants (and their relationships will cascade)
+            $product->variants()->delete();
+            // Create new variants
+            $this->createVariants($product, $data['variants']);
+        } elseif (isset($data['is_variable']) && !$data['is_variable']) {
+            // If product is no longer variable, delete all variants
+            $product->variants()->delete();
+        }
+
+        return $product->fresh(['categories', 'variants.attributes']);
     }
 
     /**
@@ -149,6 +155,69 @@ class ProductService
     public function delete(Product $product): bool
     {
         return $product->delete();
+    }
+
+    /**
+     * Create variants for a product.
+     */
+    protected function createVariants(Product $product, array $variantsData): void
+    {
+        foreach ($variantsData as $variantData) {
+            // Generate variant name from attributes
+            $attributeNames = [];
+            $attributes = $variantData['attributes'] ?? [];
+            
+            foreach ($attributes as $attrId => $value) {
+                $attribute = \App\Models\Attribute::find($attrId);
+                if ($attribute) {
+                    $attributeNames[] = "{$attribute->name}: {$value}";
+                }
+            }
+            
+            $variantName = !empty($attributeNames) 
+                ? implode(', ', $attributeNames)
+                : 'Variant';
+
+            // Create the variant
+            $variant = $product->variants()->create([
+                'name' => $variantName,
+                'sku' => $variantData['sku'] ?? null,
+                'price' => $variantData['price'] ?? 0,
+                'stock' => $variantData['stock'] ?? 0,
+                'is_active' => true,
+            ]);
+
+            // Attach attributes with values
+            foreach ($attributes as $attrId => $value) {
+                $variant->attributes()->attach($attrId, ['value' => $value]);
+            }
+
+            // Handle multiple image uploads
+            if (isset($variantData['images']) && is_array($variantData['images'])) {
+                foreach ($variantData['images'] as $index => $image) {
+                    if ($image instanceof UploadedFile) {
+                        $this->storeVariantImage($variant, $image, $index);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Store an image for a variant.
+     */
+    protected function storeVariantImage(ProductVariant $variant, UploadedFile $file, int $order = 0): void
+    {
+        $path = $file->store('products/variants', 'public');
+        
+        $variant->images()->create([
+            'image_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'file_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+            'is_primary' => $order === 0,
+            'order' => $order,
+        ]);
     }
 
     /**

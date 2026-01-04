@@ -51,11 +51,20 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+interface VariantData {
+    attributes: Record<number, string>;
+    price: string;
+    stock: string;
+    images: File[];
+    sku?: string;
+}
+
 export default function ProductsCreate({ categories, attributes }: ProductsCreateProps) {
     const [processing, setProcessing] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
     const [isActive, setIsActive] = useState(true);
     const [isVariable, setIsVariable] = useState(false);
+    const [variants, setVariants] = useState<VariantData[]>([]);
     const { errors } = usePage().props;
 
     const handleCategoryToggle = (categoryId: number) => {
@@ -77,6 +86,27 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
         selectedCategories.forEach((id) => {
             formData.append('category_ids[]', id.toString());
         });
+
+        // Add variants data if it's a variable product
+        if (isVariable && variants.length > 0) {
+            variants.forEach((variant, index) => {
+                // Add attributes for this variant
+                Object.entries(variant.attributes).forEach(([attrId, value]) => {
+                    formData.append(`variants[${index}][attributes][${attrId}]`, value);
+                });
+                formData.append(`variants[${index}][price]`, variant.price);
+                formData.append(`variants[${index}][stock]`, variant.stock);
+                if (variant.sku) {
+                    formData.append(`variants[${index}][sku]`, variant.sku);
+                }
+                // Add multiple images for this variant
+                if (variant.images && variant.images.length > 0) {
+                    variant.images.forEach((image) => {
+                        formData.append(`variants[${index}][images][]`, image);
+                    });
+                }
+            });
+        }
 
         router.post('/products', formData, {
             preserveScroll: true,
@@ -207,6 +237,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                     <ProductVariantsManager
                         attributes={attributes}
                         isVariable={isVariable}
+                        onVariantsChange={setVariants}
                     />
 
                     {categories.length > 0 && (
