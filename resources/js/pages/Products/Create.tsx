@@ -1,10 +1,11 @@
 import { type BreadcrumbItem } from '@/types';
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import InputError from '@/components/input-error';
 import ProductVariantsManager from '@/components/ProductVariantsManager';
+import ValidationErrors from '@/components/validation-errors';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -65,7 +66,18 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
     const [isActive, setIsActive] = useState(true);
     const [isVariable, setIsVariable] = useState(false);
     const [variants, setVariants] = useState<VariantData[]>([]);
-    const { errors } = usePage().props;
+    const [productImage, setProductImage] = useState<File | null>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+    const pageProps = usePage().props as { errors?: Record<string, string | string[]> };
+    const errors = pageProps.errors || {};
+
+    // Helper to get error message (handles both string and array)
+    const getErrorMessage = (key: string): string | undefined => {
+        const error = errors[key];
+        if (!error) return undefined;
+        if (Array.isArray(error)) return error[0];
+        return error;
+    };
 
     const handleCategoryToggle = (categoryId: number) => {
         setSelectedCategories((prev) =>
@@ -87,22 +99,28 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
             formData.append('category_ids[]', id.toString());
         });
 
+        // Add product image if it's not a variable product
+        if (!isVariable && productImage) {
+            formData.append('image', productImage);
+        } else if (isVariable) {
+            // Explicitly set image to null for variable products
+            formData.append('image', '');
+        }
+
         // Add variants data if it's a variable product
         if (isVariable && variants.length > 0) {
-            variants.forEach((variant, index) => {
-                // Add attributes for this variant
+            variants.forEach((variant, variantIndex) => {
+                // Add attributes as an object/map
                 Object.entries(variant.attributes).forEach(([attrId, value]) => {
-                    formData.append(`variants[${index}][attributes][${attrId}]`, value);
+                    formData.append(`variants[${variantIndex}][attributes][${attrId}]`, value);
                 });
-                formData.append(`variants[${index}][price]`, variant.price);
-                formData.append(`variants[${index}][stock]`, variant.stock);
-                if (variant.sku) {
-                    formData.append(`variants[${index}][sku]`, variant.sku);
-                }
+                // Add price, stock, and images at the variant level
+                formData.append(`variants[${variantIndex}][price]`, variant.price);
+                formData.append(`variants[${variantIndex}][stock]`, variant.stock);
                 // Add multiple images for this variant
                 if (variant.images && variant.images.length > 0) {
                     variant.images.forEach((image) => {
-                        formData.append(`variants[${index}][images][]`, image);
+                        formData.append(`variants[${variantIndex}][images][]`, image);
                     });
                 }
             });
@@ -134,6 +152,8 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    <ValidationErrors errors={errors} />
+                    
                     <Card>
                         <CardHeader>
                             <CardTitle>Product Information</CardTitle>
@@ -153,7 +173,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                                     autoFocus
                                     placeholder="Product name"
                                 />
-                                <InputError message={errors?.name as string} />
+                                <InputError message={getErrorMessage('name')} />
                             </div>
 
                             <div className="space-y-2">
@@ -166,7 +186,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                                 <p className="text-xs text-muted-foreground">
                                     Leave empty to auto-generate from name
                                 </p>
-                                <InputError message={errors?.slug as string} />
+                                <InputError message={getErrorMessage('slug')} />
                             </div>
 
                             <div className="space-y-2">
@@ -177,7 +197,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                                     rows={4}
                                     placeholder="Product description"
                                 />
-                                <InputError message={errors?.description as string} />
+                                <InputError message={getErrorMessage('description')} />
                             </div>
 
                             <div className="grid gap-6 md:grid-cols-2">
@@ -191,7 +211,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                                         min="0"
                                         placeholder="0.00"
                                     />
-                                    <InputError message={errors?.price as string} />
+                                    <InputError message={getErrorMessage('price')} />
                                 </div>
 
                                 <div className="space-y-2">
@@ -201,7 +221,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                                         name="sku"
                                         placeholder="Product SKU"
                                     />
-                                    <InputError message={errors?.sku as string} />
+                                    <InputError message={getErrorMessage('sku')} />
                                 </div>
                             </div>
 
@@ -222,15 +242,50 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                                     <Checkbox
                                         id="is_variable"
                                         checked={isVariable}
-                                        onCheckedChange={(checked) =>
-                                            setIsVariable(checked === true)
-                                        }
+                                        onCheckedChange={(checked) => {
+                                            setIsVariable(checked === true);
+                                            // Clear product image when switching to variable
+                                            if (checked === true) {
+                                                setProductImage(null);
+                                                if (imageInputRef.current) {
+                                                    imageInputRef.current.value = '';
+                                                }
+                                            }
+                                        }}
                                     />
                                     <Label htmlFor="is_variable" className="cursor-pointer">
                                         Variable Product
                                     </Label>
                                 </div>
                             </div>
+
+                            {!isVariable && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="image">Product Image</Label>
+                                    <Input
+                                        ref={imageInputRef}
+                                        id="image"
+                                        name="image"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0] || null;
+                                            setProductImage(file);
+                                        }}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Upload an image for this product (max 2MB)
+                                    </p>
+                                    {productImage && (
+                                        <div className="mt-2">
+                                            <p className="text-sm text-muted-foreground">
+                                                Selected: {productImage.name}
+                                            </p>
+                                        </div>
+                                    )}
+                                    <InputError message={getErrorMessage('image')} />
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -273,7 +328,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                                         </div>
                                     ))}
                                 </div>
-                                <InputError message={errors?.category_ids as string} />
+                                <InputError message={getErrorMessage('category_ids')} />
                             </CardContent>
                         </Card>
                     )}

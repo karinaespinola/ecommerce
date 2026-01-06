@@ -18,7 +18,7 @@ class ProductService
     public function getAll(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
         $query = Product::query()
-            ->with(['categories', 'variants'])
+            ->with(['categories', 'variants', 'images'])
             ->latest();
 
         if (isset($filters['is_active'])) {
@@ -48,7 +48,7 @@ class ProductService
     {
         return Product::query()
             ->where('is_active', true)
-            ->with(['categories'])
+            ->with(['categories', 'images'])
             ->orderBy('name')
             ->get();
     }
@@ -58,7 +58,7 @@ class ProductService
      */
     public function getById(int $id): ?Product
     {
-        return Product::with(['categories', 'variants'])->find($id);
+        return Product::with(['categories', 'variants', 'images'])->find($id);
     }
 
     /**
@@ -67,7 +67,7 @@ class ProductService
     public function getBySlug(string $slug): ?Product
     {
         return Product::where('slug', $slug)
-            ->with(['categories', 'variants'])
+            ->with(['categories', 'variants', 'images'])
             ->first();
     }
 
@@ -91,10 +91,28 @@ class ProductService
         $categoryIds = $data['category_ids'] ?? [];
         unset($data['category_ids']);
 
+        // Check if product is variable before handling image
+        $isVariable = $data['is_variable'] ?? false;
+
+        // Handle product image (only for non-variable products)
+        $image = null;
+        if (isset($data['image']) && $data['image'] instanceof UploadedFile) {
+            $image = $data['image'];
+            unset($data['image']);
+        } elseif ($isVariable) {
+            // Explicitly unset image for variable products
+            unset($data['image']);
+        }
+
         $product = Product::create($data);
 
         if (!empty($categoryIds)) {
             $product->categories()->sync($categoryIds);
+        }
+
+        // Store product image if provided and product is not variable
+        if ($image && !$isVariable) {
+            $this->storeProductImage($product, $image);
         }
 
         // Handle variants if it's a variable product
@@ -102,7 +120,7 @@ class ProductService
             $this->createVariants($product, $data['variants']);
         }
 
-        return $product->load(['categories', 'variants.attributes']);
+        return $product->load(['categories', 'variants.attributes', 'images']);
     }
 
     /**
@@ -129,10 +147,34 @@ class ProductService
             unset($data['category_ids']);
         }
 
+        // Check if product is variable before handling image
+        $isVariable = $data['is_variable'] ?? $product->is_variable;
+
+        // Handle product image (only for non-variable products)
+        $image = null;
+        if (isset($data['image']) && $data['image'] instanceof UploadedFile) {
+            $image = $data['image'];
+            unset($data['image']);
+        } elseif ($isVariable) {
+            // Delete existing product images if switching to variable
+            $product->images()->delete();
+            unset($data['image']);
+        } elseif (isset($data['image']) && $data['image'] === '') {
+            // Empty string means explicitly set to null
+            unset($data['image']);
+        }
+
         $product->update($data);
 
         if ($categoryIds !== null) {
             $product->categories()->sync($categoryIds);
+        }
+
+        // Store product image if provided and product is not variable
+        if ($image && !$isVariable) {
+            // Delete existing product images before adding new one
+            $product->images()->delete();
+            $this->storeProductImage($product, $image);
         }
 
         // Handle variants if it's a variable product
@@ -146,7 +188,7 @@ class ProductService
             $product->variants()->delete();
         }
 
-        return $product->fresh(['categories', 'variants.attributes']);
+        return $product->fresh(['categories', 'variants.attributes', 'images']);
     }
 
     /**
@@ -162,41 +204,43 @@ class ProductService
      */
     protected function createVariants(Product $product, array $variantsData): void
     {
-        foreach ($variantsData as $variantData) {
-            // Generate variant name from attributes
-            $attributeNames = [];
-            $attributes = $variantData['attributes'] ?? [];
-            
-            foreach ($attributes as $attrId => $value) {
-                $attribute = \App\Models\Attribute::find($attrId);
-                if ($attribute) {
-                    $attributeNames[] = "{$attribute->name}: {$value}";
-                }
+        foreach ($variantsData as $variant) {
+            if (empty($variant) || !is_array($variant)) {
+                continue;
             }
-            
-            $variantName = !empty($attributeNames) 
-                ? implode(', ', $attributeNames)
-                : 'Variant';
 
-            // Create the variant
-            $variant = $product->variants()->create([
-                'name' => $variantName,
-                'sku' => $variantData['sku'] ?? null,
-                'price' => $variantData['price'] ?? 0,
-                'stock' => $variantData['stock'] ?? 0,
+            // Extract attributes, price, stock, and images from the variant
+            if (!isset($variant['attributes']) || !is_array($variant['attributes']) || empty($variant['attributes'])) {
+                continue;
+            }
+
+            $attributes = [];
+            foreach ($variant['attributes'] as $attrId => $value) {
+                $attributes[(int) $attrId] = $value;
+            }
+
+            if (empty($attributes)) {
+                continue;
+            }
+
+            $variantModel = ProductVariant::create([
+                'product_id' => $product->id,
+                'sku' => $variant['sku'] ?? null,
+                'price' => $variant['price'] ?? 0,
+                'stock' => $variant['stock'] ?? 0,
                 'is_active' => true,
             ]);
 
             // Attach attributes with values
             foreach ($attributes as $attrId => $value) {
-                $variant->attributes()->attach($attrId, ['value' => $value]);
+                $variantModel->attributes()->attach($attrId, ['value' => $value]);
             }
 
             // Handle multiple image uploads
-            if (isset($variantData['images']) && is_array($variantData['images'])) {
-                foreach ($variantData['images'] as $index => $image) {
+            if (!empty($variant['images']) && is_array($variant['images'])) {
+                foreach ($variant['images'] as $index => $image) {
                     if ($image instanceof UploadedFile) {
-                        $this->storeVariantImage($variant, $image, $index);
+                        $this->storeVariantImage($variantModel, $image, $index);
                     }
                 }
             }
@@ -217,6 +261,23 @@ class ProductService
             'file_size' => $file->getSize(),
             'is_primary' => $order === 0,
             'order' => $order,
+        ]);
+    }
+
+    /**
+     * Store an image for a product.
+     */
+    protected function storeProductImage(Product $product, UploadedFile $file): void
+    {
+        $path = $file->store('products', 'public');
+        
+        $product->images()->create([
+            'image_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'file_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+            'is_primary' => true,
+            'order' => 0,
         ]);
     }
 

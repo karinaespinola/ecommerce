@@ -16,7 +16,6 @@ import { dashboard } from '@/routes';
 
 interface ProductVariant {
     id: number;
-    name: string;
     sku: string;
     pivot: {
         value: string;
@@ -147,10 +146,10 @@ export default function AttributesShow({ attribute }: AttributesShowProps) {
                                                 className="rounded-md border p-3"
                                             >
                                                 <div className="font-medium">
-                                                    {variant.name}
+                                                    Variant #{variant.id}
                                                 </div>
                                                 <div className="text-sm text-muted-foreground">
-                                                    SKU: {variant.sku}
+                                                    SKU: {variant.sku || 'N/A'}
                                                 </div>
                                                 <div className="mt-1 text-sm">
                                                     Value:{' '}

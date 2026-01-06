@@ -1,10 +1,11 @@
 import { type BreadcrumbItem } from '@/types';
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import InputError from '@/components/input-error';
 import ProductVariantsManager from '@/components/ProductVariantsManager';
+import ValidationErrors from '@/components/validation-errors';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -32,6 +33,13 @@ interface Attribute {
     is_active: boolean;
 }
 
+interface ProductImage {
+    id: number;
+    image_path: string;
+    file_name: string;
+    is_primary: boolean;
+}
+
 interface Product {
     id: number;
     name: string;
@@ -42,6 +50,7 @@ interface Product {
     is_active: boolean;
     is_variable: boolean;
     categories: Category[];
+    images?: ProductImage[];
 }
 
 interface VariantData {
@@ -84,7 +93,18 @@ export default function ProductsEdit({
     const [isActive, setIsActive] = useState(product.is_active);
     const [isVariable, setIsVariable] = useState(product.is_variable);
     const [variants, setVariants] = useState<VariantData[]>([]);
-    const { errors } = usePage().props;
+    const [productImage, setProductImage] = useState<File | null>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+    const pageProps = usePage().props as { errors?: Record<string, string | string[]> };
+    const errors = pageProps.errors || {};
+
+    // Helper to get error message (handles both string and array)
+    const getErrorMessage = (key: string): string | undefined => {
+        const error = errors[key];
+        if (!error) return undefined;
+        if (Array.isArray(error)) return error[0];
+        return error;
+    };
 
     const handleCategoryToggle = (categoryId: number) => {
         setSelectedCategories((prev) =>
@@ -106,22 +126,28 @@ export default function ProductsEdit({
             formData.append('category_ids[]', id.toString());
         });
 
+        // Add product image if it's not a variable product
+        if (!isVariable && productImage) {
+            formData.append('image', productImage);
+        } else if (isVariable) {
+            // Explicitly set image to null for variable products
+            formData.append('image', '');
+        }
+
         // Add variants data if it's a variable product
         if (isVariable && variants.length > 0) {
-            variants.forEach((variant, index) => {
-                // Add attributes for this variant
+            variants.forEach((variant, variantIndex) => {
+                // Add attributes as an object/map
                 Object.entries(variant.attributes).forEach(([attrId, value]) => {
-                    formData.append(`variants[${index}][attributes][${attrId}]`, value);
+                    formData.append(`variants[${variantIndex}][attributes][${attrId}]`, value);
                 });
-                formData.append(`variants[${index}][price]`, variant.price);
-                formData.append(`variants[${index}][stock]`, variant.stock);
-                if (variant.sku) {
-                    formData.append(`variants[${index}][sku]`, variant.sku);
-                }
+                // Add price, stock, and images at the variant level
+                formData.append(`variants[${variantIndex}][price]`, variant.price);
+                formData.append(`variants[${variantIndex}][stock]`, variant.stock);
                 // Add multiple images for this variant
                 if (variant.images && variant.images.length > 0) {
                     variant.images.forEach((image) => {
-                        formData.append(`variants[${index}][images][]`, image);
+                        formData.append(`variants[${variantIndex}][images][]`, image);
                     });
                 }
             });
@@ -153,6 +179,8 @@ export default function ProductsEdit({
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    <ValidationErrors errors={errors} />
+                    
                     <Card>
                         <CardHeader>
                             <CardTitle>Product Information</CardTitle>
@@ -172,7 +200,7 @@ export default function ProductsEdit({
                                     defaultValue={product.name}
                                     autoFocus
                                 />
-                                <InputError message={errors?.name as string} />
+                                <InputError message={getErrorMessage('name')} />
                             </div>
 
                             <div className="space-y-2">
@@ -186,7 +214,7 @@ export default function ProductsEdit({
                                 <p className="text-xs text-muted-foreground">
                                     Leave empty to auto-generate from name
                                 </p>
-                                <InputError message={errors?.slug as string} />
+                                <InputError message={getErrorMessage('slug')} />
                             </div>
 
                             <div className="space-y-2">
@@ -197,7 +225,7 @@ export default function ProductsEdit({
                                     rows={4}
                                     defaultValue={product.description || ''}
                                 />
-                                <InputError message={errors?.description as string} />
+                                <InputError message={getErrorMessage('description')} />
                             </div>
 
                             <div className="grid gap-6 md:grid-cols-2">
@@ -211,7 +239,7 @@ export default function ProductsEdit({
                                         min="0"
                                         defaultValue={product.price || ''}
                                     />
-                                    <InputError message={errors?.price as string} />
+                                    <InputError message={getErrorMessage('price')} />
                                 </div>
 
                                 <div className="space-y-2">
@@ -221,7 +249,7 @@ export default function ProductsEdit({
                                         name="sku"
                                         defaultValue={product.sku || ''}
                                     />
-                                    <InputError message={errors?.sku as string} />
+                                    <InputError message={getErrorMessage('sku')} />
                                 </div>
                             </div>
 
@@ -242,15 +270,57 @@ export default function ProductsEdit({
                                     <Checkbox
                                         id="is_variable"
                                         checked={isVariable}
-                                        onCheckedChange={(checked) =>
-                                            setIsVariable(checked === true)
-                                        }
+                                        onCheckedChange={(checked) => {
+                                            setIsVariable(checked === true);
+                                            // Clear product image when switching to variable
+                                            if (checked === true) {
+                                                setProductImage(null);
+                                                if (imageInputRef.current) {
+                                                    imageInputRef.current.value = '';
+                                                }
+                                            }
+                                        }}
                                     />
                                     <Label htmlFor="is_variable" className="cursor-pointer">
                                         Variable Product
                                     </Label>
                                 </div>
                             </div>
+
+                            {!isVariable && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="image">Product Image</Label>
+                                    <Input
+                                        ref={imageInputRef}
+                                        id="image"
+                                        name="image"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0] || null;
+                                            setProductImage(file);
+                                        }}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Upload an image for this product (max 2MB)
+                                    </p>
+                                    {productImage && (
+                                        <div className="mt-2">
+                                            <p className="text-sm text-muted-foreground">
+                                                Selected: {productImage.name}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {!productImage && product.images && product.images.length > 0 && (
+                                        <div className="mt-2">
+                                            <p className="text-sm text-muted-foreground">
+                                                Current image: {product.images[0].file_name}
+                                            </p>
+                                        </div>
+                                    )}
+                                    <InputError message={getErrorMessage('image')} />
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -293,7 +363,7 @@ export default function ProductsEdit({
                                         </div>
                                     ))}
                                 </div>
-                                <InputError message={errors?.category_ids as string} />
+                                <InputError message={getErrorMessage('category_ids')} />
                             </CardContent>
                         </Card>
                     )}
