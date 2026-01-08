@@ -20,7 +20,7 @@ class CartController extends Controller
     /**
      * Get authenticated customer ID.
      */
-    protected function getCustomerId(): int
+    protected function getCustomerId(): ?int
     {
         return Auth::guard('customer')->id();
     }
@@ -30,7 +30,7 @@ class CartController extends Controller
      */
     public function index(Request $request): Response
     {
-        $customerId = Auth::guard('customer')->id();
+        $customerId = $this->getCustomerId();
         
         if (!$customerId) {
             return Inertia::render('public/Cart', [
@@ -39,12 +39,11 @@ class CartController extends Controller
             ]);
         }
 
-        $cartItems = $this->cartService->getCartItems($customerId);
-        $cartCount = $this->cartService->getCartItemCount($customerId);
+        $cartData = $this->cartService->getCartData($customerId);
 
         return Inertia::render('public/Cart', [
-            'cartItems' => $cartItems,
-            'cartCount' => $cartCount,
+            'cartItems' => $cartData['items'],
+            'cartCount' => $cartData['count'],
         ]);
     }
 
@@ -53,7 +52,7 @@ class CartController extends Controller
      */
     public function show(Request $request): JsonResponse
     {
-        $customerId = Auth::guard('customer')->id();
+        $customerId = $this->getCustomerId();
         
         if (!$customerId) {
             return response()->json([
@@ -62,12 +61,11 @@ class CartController extends Controller
             ]);
         }
 
-        $cartItems = $this->cartService->getCartItems($customerId);
-        $cartCount = $this->cartService->getCartItemCount($customerId);
+        $cartData = $this->cartService->getCartData($customerId);
 
         return response()->json([
-            'items' => $cartItems,
-            'count' => $cartCount,
+            'items' => $cartData['items'],
+            'count' => $cartData['count'],
         ]);
     }
 
@@ -96,33 +94,23 @@ class CartController extends Controller
         try {
             $customerId = $this->getCustomerId();
             
-            $cartItem = $this->cartService->addToCart(
+            $data = $this->cartService->addToCartWithData(
                 $customerId,
                 $validated['product_id'],
                 $validated['product_variant_id'] ?? null,
                 $validated['quantity'] ?? 1
             );
 
-            $cartCount = $this->cartService->getCartItemCount($customerId);
-
             if ($request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'cartItem' => $cartItem,
-                    'cartCount' => $cartCount,
+                    ...$data,
                 ]);
             }
 
             return redirect()->back()->with('success', 'Item added to cart.');
         } catch (\Exception $e) {
-            if ($request->wantsJson() || $request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                ], 400);
-            }
-
-            return redirect()->back()->with('error', $e->getMessage());
+            return $this->handleException($e, $request);
         }
     }
 
@@ -138,31 +126,22 @@ class CartController extends Controller
         try {
             $customerId = $this->getCustomerId();
             
-            $cartItem = $this->cartService->updateCartItem(
+            $data = $this->cartService->updateCartItemWithData(
                 $customerId,
                 $id,
                 $validated['quantity']
             );
-            $cartCount = $this->cartService->getCartItemCount($customerId);
 
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'cartItem' => $cartItem,
-                    'cartCount' => $cartCount,
+                    ...$data,
                 ]);
             }
 
             return redirect()->back()->with('success', 'Cart updated.');
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                ], 400);
-            }
-
-            return redirect()->back()->with('error', $e->getMessage());
+            return $this->handleException($e, $request);
         }
     }
 
@@ -174,26 +153,18 @@ class CartController extends Controller
         try {
             $customerId = $this->getCustomerId();
             
-            $this->cartService->removeFromCart($customerId, $id);
-            $cartCount = $this->cartService->getCartItemCount($customerId);
+            $data = $this->cartService->removeFromCartWithData($customerId, $id);
 
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'cartCount' => $cartCount,
+                    ...$data,
                 ]);
             }
 
             return redirect()->back()->with('success', 'Item removed from cart.');
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                ], 400);
-            }
-
-            return redirect()->back()->with('error', $e->getMessage());
+            return $this->handleException($e, $request);
         }
     }
 
@@ -216,14 +187,22 @@ class CartController extends Controller
 
             return redirect()->back()->with('success', 'Cart cleared.');
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                ], 400);
-            }
-
-            return redirect()->back()->with('error', $e->getMessage());
+            return $this->handleException($e, $request);
         }
+    }
+
+    /**
+     * Handle exceptions and return appropriate response.
+     */
+    protected function handleException(\Exception $e, Request $request): JsonResponse|RedirectResponse
+    {
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+
+        return redirect()->back()->with('error', $e->getMessage());
     }
 }

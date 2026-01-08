@@ -204,4 +204,56 @@ class CartService
 
         return CartProduct::where('cart_id', $cart->id)->delete();
     }
+
+    /**
+     * Get cart data (items and count) for a customer.
+     */
+    public function getCartData(int $customerId): array
+    {
+        return [
+            'items' => $this->getCartItems($customerId),
+            'count' => $this->getCartItemCount($customerId),
+        ];
+    }
+
+    /**
+     * Add item to cart and return cart data.
+     */
+    public function addToCartWithData(int $customerId, int $productId, ?int $productVariantId = null, int $quantity = 1): array
+    {
+        $cartItem = $this->addToCart($customerId, $productId, $productVariantId, $quantity);
+        $cartCount = $this->getCartItemCount($customerId);
+
+        return [
+            'cartItem' => $cartItem,
+            'cartCount' => $cartCount,
+        ];
+    }
+
+    /**
+     * Update cart item and return cart data.
+     */
+    public function updateCartItemWithData(int $customerId, int $cartItemId, int $quantity): array
+    {
+        $cartItem = $this->updateCartItem($customerId, $cartItemId, $quantity);
+        $cartCount = $this->getCartItemCount($customerId);
+
+        return [
+            'cartItem' => $cartItem,
+            'cartCount' => $cartCount,
+        ];
+    }
+
+    /**
+     * Remove item from cart and return cart count.
+     */
+    public function removeFromCartWithData(int $customerId, int $cartItemId): array
+    {
+        $this->removeFromCart($customerId, $cartItemId);
+        $cartCount = $this->getCartItemCount($customerId);
+
+        return [
+            'cartCount' => $cartCount,
+        ];
+    }
 }

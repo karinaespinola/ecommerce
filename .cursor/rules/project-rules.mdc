@@ -30,3 +30,4 @@ This is a Laravel e-commerce application built with the Laravel Starter Kit for 
 - Use React components for frontend UI
 - Maintain separation between admin and client-facing features
 - Ensure guest checkout flow is seamless and secure
+- Keep controllers lean and main logic in services

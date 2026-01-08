@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreProductImageRequest;
+use App\Http\Requests\UpdateProductImageRequest;
 use App\Models\Image;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -48,20 +50,11 @@ class ProductImageController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request, string $type, int $id): RedirectResponse|JsonResponse
+    public function store(StoreProductImageRequest $request, string $type, int $id): RedirectResponse|JsonResponse
     {
         $imageable = $this->getImageable($type, $id);
 
-        $validated = $request->validate([
-            'image_path' => 'required|string|max:255',
-            'file_name' => 'nullable|string|max:255',
-            'file_type' => 'nullable|string|max:255',
-            'file_size' => 'nullable|integer',
-            'type' => 'nullable|string|max:255',
-            'order' => 'integer|min:0',
-        ]);
-
-        $image = $imageable->images()->create($validated);
+        $image = $imageable->images()->create($request->validated());
 
         if ($request->wantsJson()) {
             return response()->json($image, 201);
@@ -109,21 +102,12 @@ class ProductImageController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $type, int $id, int $imageId): RedirectResponse|JsonResponse
+    public function update(UpdateProductImageRequest $request, string $type, int $id, int $imageId): RedirectResponse|JsonResponse
     {
         $imageable = $this->getImageable($type, $id);
         $image = $imageable->images()->findOrFail($imageId);
 
-        $validated = $request->validate([
-            'image_path' => 'sometimes|string|max:255',
-            'file_name' => 'nullable|string|max:255',
-            'file_type' => 'nullable|string|max:255',
-            'file_size' => 'nullable|integer',
-            'type' => 'nullable|string|max:255',
-            'order' => 'integer|min:0',
-        ]);
-
-        $image->update($validated);
+        $image->update($request->validated());
 
         if ($request->wantsJson()) {
             return response()->json($image);
