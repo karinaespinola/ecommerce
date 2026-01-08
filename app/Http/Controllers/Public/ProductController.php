@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-
+use Illuminate\Support\Facades\Log;
 class ProductController extends Controller
 {
     public function __construct(
@@ -25,7 +25,6 @@ class ProductController extends Controller
     {
         $filters = [
             'is_active' => true,
-            'category_id' => $request->integer('category_id'),
             'search' => $request->string('search')->toString(),
         ];
 
@@ -34,9 +33,13 @@ class ProductController extends Controller
             array_filter($filters, fn($value) => $value !== null && $value !== '')
         );
 
+        // Format products for public display
+        $products = $this->productService->formatProductsForPublic($products);
+
         $categories = $this->categoryService->getAllWithoutPagination();
 
-        if ($request->wantsJson()) {
+        // If request is to /api/products or wants JSON, return JSON
+        if ($request->is('api/products') || $request->wantsJson()) {
             return response()->json([
                 'products' => $products,
                 'categories' => $categories,
@@ -46,7 +49,7 @@ class ProductController extends Controller
         return Inertia::render('public/Products', [
             'products' => $products,
             'categories' => $categories,
-            'filters' => $request->only(['category_id', 'search']),
+            'filters' => $request->only(['search']),
         ]);
     }
 
@@ -55,6 +58,11 @@ class ProductController extends Controller
      */
     public function show(Request $request, string $slug): Response|JsonResponse
     {
+        // If slug is purely numeric, it's likely an ID - let it fall through to admin route
+        if (is_numeric($slug)) {
+            abort(404);
+        }
+
         $product = $this->productService->getBySlug($slug);
 
         if (!$product || !$product->is_active) {

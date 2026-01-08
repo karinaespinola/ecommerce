@@ -52,7 +52,7 @@ class CategoryController extends Controller
         $category = $this->categoryService->create($request->validated());
 
         return redirect()
-            ->route('categories.index')
+            ->route('admin.categories.index')
             ->with('success', 'Category created successfully.');
     }
 
@@ -106,7 +106,7 @@ class CategoryController extends Controller
         $this->categoryService->update($category, $request->validated());
 
         return redirect()
-            ->route('categories.index')
+            ->route('admin.categories.index')
             ->with('success', 'Category updated successfully.');
     }
 
@@ -128,7 +128,7 @@ class CategoryController extends Controller
         }
 
         return redirect()
-            ->route('categories.index')
+            ->route('admin.categories.index')
             ->with('success', 'Category deleted successfully.');
     }
 }

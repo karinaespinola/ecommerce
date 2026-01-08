@@ -29,7 +29,7 @@ import {
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
-import { dashboard } from '@/routes';
+import { dashboard } from '@/routes/admin';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { BookOpen, Folder, LayoutGrid, Menu, Package, Search, Tag } from 'lucide-react';
@@ -39,17 +39,17 @@ import AppLogoIcon from './app-logo-icon';
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
-        href: dashboard(),
+        href: dashboard().url,
         icon: LayoutGrid,
     },
     {
         title: 'Products',
-        href: '/products',
+        href: '/admin/products',
         icon: Package,
     },
     {
         title: 'Categories',
-        href: '/categories',
+        href: '/admin/categories',
         icon: Tag,
     },
 ];
@@ -150,7 +150,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                     </div>
 
                     <Link
-                        href={dashboard()}
+                        href={dashboard().url}
                         prefetch
                         className="flex items-center space-x-2"
                     >

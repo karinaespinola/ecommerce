@@ -31,6 +31,7 @@ class UpdateCategoryRequest extends FormRequest
                 Rule::unique('categories', 'slug')->ignore($categoryId),
             ],
             'description' => ['nullable', 'string'],
+            'image' => ['nullable', 'image', 'max:2048'],
         ];
     }
 }

@@ -68,7 +68,7 @@ class ProductController extends Controller
         $this->productService->create($request->validated());
 
         return redirect()
-            ->route('products.index')
+            ->route('admin.products.index')
             ->with('success', 'Product created successfully.');
     }
 
@@ -124,10 +124,12 @@ class ProductController extends Controller
             abort(404);
         }
 
+        Log::debug('Request data', $request->all());
+
         $this->productService->update($product, $request->validated());
 
         return redirect()
-            ->route('products.index')
+            ->route('admin.products.index')
             ->with('success', 'Product updated successfully.');
     }
 
@@ -149,7 +151,7 @@ class ProductController extends Controller
         }
 
         return redirect()
-            ->route('products.index')
+            ->route('admin.products.index')
             ->with('success', 'Product deleted successfully.');
     }
 }

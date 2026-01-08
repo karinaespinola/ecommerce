@@ -89,6 +89,7 @@ class StoreProductRequest extends FormRequest
             'slug' => ['nullable', 'string', 'max:255', 'unique:products,slug'],
             'description' => ['nullable', 'string'],
             'price' => ['nullable', 'numeric', 'min:0'],
+            'stock' => $isVariable ? ['nullable'] : ['nullable', 'integer', 'min:0'],
             'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku'],
             'is_active' => ['boolean'],
             'is_variable' => ['boolean'],
@@ -104,6 +105,7 @@ class StoreProductRequest extends FormRequest
             'variants.*.sku' => ['nullable', 'string', 'max:255'],
             'variants.*.images' => ['nullable', 'array'],
             'variants.*.images.*' => ['nullable', 'image', 'max:2048'],
+            'featured_image_id' => ['nullable', 'string'],
         ];
     }
 
@@ -125,6 +127,8 @@ class StoreProductRequest extends FormRequest
             'variants.*.stock.required' => 'The stock is required.',
             'variants.*.stock.integer' => 'The stock must be a whole number.',
             'variants.*.stock.min' => 'The stock must be at least 0.',
+            'stock.integer' => 'The stock must be a whole number.',
+            'stock.min' => 'The stock must be at least 0.',
         ];
     }
 
@@ -135,6 +139,7 @@ class StoreProductRequest extends FormRequest
     {
         return [
             'image' => 'product image',
+            'stock' => 'stock',
             'variants.*.sku' => 'SKU',
             'variants.*.images.*' => 'image',
             'variants.*.attributes' => 'attributes',

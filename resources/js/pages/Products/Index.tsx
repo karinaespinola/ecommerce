@@ -30,7 +30,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
+import { dashboard } from '@/routes/admin';
 
 interface Category {
     id: number;
@@ -100,7 +100,7 @@ export default function ProductsIndex({
     const { flash } = usePage().props;
 
     const handleDelete = (id: number) => {
-        router.delete(`/products/${id}`, {
+        router.delete(`/admin/products/${id}`, {
             preserveScroll: true,
             onSuccess: () => {
                 setDeleteDialogOpen(null);
@@ -114,7 +114,7 @@ export default function ProductsIndex({
         if (categoryFilter !== 'all') params.category_id = categoryFilter;
         if (statusFilter !== 'all') params.is_active = statusFilter;
 
-        router.get('/products', params, {
+        router.get('/admin/products', params, {
             preserveScroll: true,
             replace: true,
         });
@@ -124,7 +124,7 @@ export default function ProductsIndex({
         setSearch('');
         setCategoryFilter('all');
         setStatusFilter('all');
-        router.get('/products', {}, { preserveScroll: true, replace: true });
+        router.get('/admin/products', {}, { preserveScroll: true, replace: true });
     };
 
     return (
@@ -139,7 +139,7 @@ export default function ProductsIndex({
                             Manage your product catalog
                         </p>
                     </div>
-                    <Link href="/products/create">
+                    <Link href="/admin/products/create">
                         <Button>
                             <Plus className="size-4" />
                             Add Product
@@ -319,13 +319,13 @@ export default function ProductsIndex({
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <Link href={`/products/${product.id}`}>
+                                                            <Link href={`/admin/products/${product.id}`}>
                                                                 <Button variant="ghost" size="sm">
                                                                     View
                                                                 </Button>
                                                             </Link>
                                                             <Link
-                                                                href={`/products/${product.id}/edit`}
+                                                                href={`/admin/products/${product.id}/edit`}
                                                             >
                                                                 <Button variant="ghost" size="sm">
                                                                     <Pencil className="size-4" />

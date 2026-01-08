@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
+import { dashboard } from '@/routes/admin';
 
 interface Category {
     id: number;
@@ -37,7 +37,22 @@ interface ProductImage {
     id: number;
     image_path: string;
     file_name: string;
-    is_primary: boolean;
+}
+
+interface ProductVariantAttribute {
+    id: number;
+    pivot: {
+        value: string;
+    };
+}
+
+interface ProductVariant {
+    id: number;
+    price: string | number;
+    stock: string | number;
+    sku: string | null;
+    attributes: ProductVariantAttribute[];
+    images?: ProductImage[];
 }
 
 interface Product {
@@ -46,18 +61,26 @@ interface Product {
     slug: string;
     description: string | null;
     price: number;
+    stock?: number;
     sku: string | null;
     is_active: boolean;
     is_variable: boolean;
+    featured_image_id?: number | null;
     categories: Category[];
     images?: ProductImage[];
+    variants?: ProductVariant[];
 }
 
 interface VariantData {
     attributes: Record<number, string>;
-    price: string;
-    stock: string;
+    price: number;
+    stock: number;
     images: File[];
+    existingImages: Array<{ // Always defined to ensure deletion tracking works
+        id?: number;
+        image_path: string;
+        file_name: string;
+    }>;
     sku?: string;
 }
 
@@ -74,7 +97,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Products',
-        href: '/products',
+        href: '/admin/products',
     },
     {
         title: 'Edit',
@@ -94,6 +117,7 @@ export default function ProductsEdit({
     const [isVariable, setIsVariable] = useState(product.is_variable);
     const [variants, setVariants] = useState<VariantData[]>([]);
     const [productImage, setProductImage] = useState<File | null>(null);
+    const [featuredImageId, setFeaturedImageId] = useState<string | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const pageProps = usePage().props as { errors?: Record<string, string | string[]> };
     const errors = pageProps.errors || {};
@@ -142,18 +166,46 @@ export default function ProductsEdit({
                     formData.append(`variants[${variantIndex}][attributes][${attrId}]`, value);
                 });
                 // Add price, stock, and images at the variant level
-                formData.append(`variants[${variantIndex}][price]`, variant.price);
-                formData.append(`variants[${variantIndex}][stock]`, variant.stock);
+                formData.append(`variants[${variantIndex}][price]`, String(variant.price));
+                formData.append(`variants[${variantIndex}][stock]`, String(variant.stock));
                 // Add multiple images for this variant
                 if (variant.images && variant.images.length > 0) {
                     variant.images.forEach((image) => {
                         formData.append(`variants[${variantIndex}][images][]`, image);
                     });
                 }
+                // Add existing image IDs that should be kept (for deletion tracking)
+                // Send existing_image_ids if existingImages is defined (even if empty)
+                // An empty array means all existing images were removed - send sentinel value
+                // If existingImages is undefined, don't send anything (new variant with no existing images)
+                if (variant.existingImages !== undefined) {
+                    if (variant.existingImages.length > 0) {
+                        variant.existingImages.forEach((image) => {
+                            if (image.id) {
+                                formData.append(`variants[${variantIndex}][existing_image_ids][]`, String(image.id));
+                            }
+                        });
+                    } else {
+                        // Empty array means delete all existing images - send sentinel value
+                        // This handles the case where all images were removed from an existing variant
+                        formData.append(`variants[${variantIndex}][existing_image_ids][]`, '__empty__');
+                    }
+                }
             });
         }
 
-        router.put(`/products/${product.id}`, formData, {
+        // Add featured image ID - required for variable products
+        if (isVariable) {
+            if (!featuredImageId) {
+                e.preventDefault();
+                alert('Please select a featured image for the product.');
+                setProcessing(false);
+                return;
+            }
+            formData.append('featured_image_id', featuredImageId);
+        }
+
+        router.put(`/admin/products/${product.id}`, formData, {
             preserveScroll: true,
             onFinish: () => setProcessing(false),
         });
@@ -165,7 +217,7 @@ export default function ProductsEdit({
 
             <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                    <Link href="/products">
+                    <Link href="/admin/products">
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -253,6 +305,20 @@ export default function ProductsEdit({
                                 </div>
                             </div>
 
+                            {!isVariable && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="stock">Stock</Label>
+                                    <Input
+                                        id="stock"
+                                        name="stock"
+                                        type="number"
+                                        min="0"
+                                        defaultValue={product.stock ?? ''}
+                                    />
+                                    <InputError message={getErrorMessage('stock')} />
+                                </div>
+                            )}
+
                             <div className="flex items-center gap-6">
                                 <div className="flex items-center gap-2">
                                     <Checkbox
@@ -328,6 +394,9 @@ export default function ProductsEdit({
                         attributes={attributes}
                         isVariable={isVariable}
                         onVariantsChange={setVariants}
+                        onFeaturedImageChange={setFeaturedImageId}
+                        initialVariants={product.variants}
+                        initialFeaturedImageId={product.featured_image_id}
                     />
 
                     {categories.length > 0 && (
@@ -372,7 +441,7 @@ export default function ProductsEdit({
                         <Button type="submit" disabled={processing}>
                             {processing ? 'Updating...' : 'Update Product'}
                         </Button>
-                        <Link href="/products">
+                        <Link href="/admin/products">
                             <Button type="button" variant="outline">
                                 Cancel
                             </Button>

@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
-import { home, login, register, dashboard } from '@/routes';
+import { home, login, register } from '@/routes';
+import { dashboard } from '@/routes/admin';
 import { ShoppingCart, Search, User, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +40,7 @@ export default function PublicLayout({ children, title = 'Shop' }: PublicLayoutP
                                 <Link href="#" className="hover:text-gray-900">About</Link>
                                 <Link href="#" className="hover:text-gray-900">Contact</Link>
                                 {auth.user ? (
-                                    <Link href={dashboard()} className="hover:text-gray-900">Dashboard</Link>
+                                    <Link href={dashboard().url} className="hover:text-gray-900">Dashboard</Link>
                                 ) : (
                                     <>
                                         <Link href={register()} className="hover:text-gray-900">Sign Up</Link>
@@ -76,9 +77,11 @@ export default function PublicLayout({ children, title = 'Shop' }: PublicLayoutP
 
                             {/* Right Side Actions */}
                             <div className="flex items-center gap-4">
-                                <CartIcon />
+                                <div className="relative">
+                                    <CartIcon />
+                                </div>
                                 {auth.user && (
-                                    <Link href={dashboard()}>
+                                    <Link href={dashboard().url}>
                                         <Button variant="ghost" size="icon">
                                             <User className="h-5 w-5" />
                                         </Button>

@@ -12,17 +12,13 @@ class Order extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
+        'customer_id',
         'order_number',
         'status',
         'subtotal',
         'tax',
         'shipping',
         'total',
-        'email',
-        'phone',
-        'shipping_address',
-        'billing_address',
     ];
 
     protected function casts(): array
@@ -32,14 +28,12 @@ class Order extends Model
             'tax' => 'decimal:2',
             'shipping' => 'decimal:2',
             'total' => 'decimal:2',
-            'shipping_address' => 'array',
-            'billing_address' => 'array',
         ];
     }
 
-    public function user(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Customer::class);
     }
 
     public function items(): HasMany

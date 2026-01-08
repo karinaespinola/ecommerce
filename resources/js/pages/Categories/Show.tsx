@@ -12,13 +12,14 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
+import { dashboard } from '@/routes/admin';
 
 interface Category {
     id: number;
     name: string;
     slug: string;
     description: string | null;
+    image: string | null;
     created_at: string;
     updated_at: string;
     products?: Array<{
@@ -83,6 +84,18 @@ export default function CategoriesShow({ category }: CategoriesShowProps) {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            {category.image && (
+                                <div>
+                                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                                        Image
+                                    </div>
+                                    <img
+                                        src={`/storage/${category.image}`}
+                                        alt={category.name}
+                                        className="w-full max-w-md h-auto rounded-lg"
+                                    />
+                                </div>
+                            )}
                             <div>
                                 <div className="text-sm font-medium text-muted-foreground">
                                     Name
@@ -134,7 +147,7 @@ export default function CategoriesShow({ category }: CategoriesShowProps) {
                                     {category.products.map((product) => (
                                         <Link
                                             key={product.id}
-                                            href={`/products/${product.id}`}
+                                            href={`/admin/products/${product.id}`}
                                             className="block rounded-md border p-3 transition-colors hover:bg-muted"
                                         >
                                             <div className="font-medium">{product.name}</div>

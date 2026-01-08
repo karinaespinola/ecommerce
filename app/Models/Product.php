@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -17,15 +18,18 @@ class Product extends Model
         'slug',
         'description',
         'price',
+        'stock',
         'sku',
         'is_active',
         'is_variable',
+        'featured_image_id',
     ];
 
     protected function casts(): array
     {
         return [
             'price' => 'decimal:2',
+            'stock' => 'integer',
             'is_active' => 'boolean',
             'is_variable' => 'boolean',
         ];
@@ -46,13 +50,18 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function cartItems(): HasMany
+    public function shoppingCarts(): HasMany
     {
-        return $this->hasMany(Cart::class);
+        return $this->hasMany(ShoppingCart::class);
     }
 
     public function images(): MorphMany
     {
         return $this->morphMany(Image::class, 'imageable');
+    }
+
+    public function featuredImage(): BelongsTo
+    {
+        return $this->belongsTo(Image::class, 'featured_image_id');
     }
 }

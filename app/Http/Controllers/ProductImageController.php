@@ -58,14 +58,8 @@ class ProductImageController extends Controller
             'file_type' => 'nullable|string|max:255',
             'file_size' => 'nullable|integer',
             'type' => 'nullable|string|max:255',
-            'is_primary' => 'boolean',
             'order' => 'integer|min:0',
         ]);
-
-        // If this is set as primary, unset other primary images
-        if ($validated['is_primary'] ?? false) {
-            $imageable->images()->update(['is_primary' => false]);
-        }
 
         $image = $imageable->images()->create($validated);
 
@@ -74,7 +68,7 @@ class ProductImageController extends Controller
         }
 
         return redirect()
-            ->route('images.index', [$type, $id])
+            ->route('admin.images.index', [$type, $id])
             ->with('success', 'Image created successfully.');
     }
 
@@ -126,16 +120,8 @@ class ProductImageController extends Controller
             'file_type' => 'nullable|string|max:255',
             'file_size' => 'nullable|integer',
             'type' => 'nullable|string|max:255',
-            'is_primary' => 'boolean',
             'order' => 'integer|min:0',
         ]);
-
-        // If this is set as primary, unset other primary images
-        if (isset($validated['is_primary']) && $validated['is_primary']) {
-            $imageable->images()
-                ->where('id', '!=', $imageId)
-                ->update(['is_primary' => false]);
-        }
 
         $image->update($validated);
 
@@ -144,7 +130,7 @@ class ProductImageController extends Controller
         }
 
         return redirect()
-            ->route('images.index', [$type, $id])
+            ->route('admin.images.index', [$type, $id])
             ->with('success', 'Image updated successfully.');
     }
 
@@ -163,7 +149,7 @@ class ProductImageController extends Controller
         }
 
         return redirect()
-            ->route('images.index', [$type, $id])
+            ->route('admin.images.index', [$type, $id])
             ->with('success', 'Image deleted successfully.');
     }
 

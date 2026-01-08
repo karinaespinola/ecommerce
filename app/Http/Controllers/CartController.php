@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Services\CartService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,12 +19,42 @@ class CartController extends Controller
     }
 
     /**
+     * Get customer ID from request or session.
+     * Creates a guest customer if none exists.
+     */
+    protected function getCustomerId(Request $request): int
+    {
+        // Try to get from request first
+        if ($request->has('customer_id')) {
+            $customerId = (int) $request->input('customer_id');
+            Session::put('customer_id', $customerId);
+            return $customerId;
+        }
+
+        // Try to get from session
+        if (Session::has('customer_id')) {
+            return (int) Session::get('customer_id');
+        }
+
+        // Create a guest customer if none exists
+        $guestCustomer = Customer::create([
+            'name' => 'Guest',
+            'email' => 'guest-' . Session::getId() . '@example.com',
+        ]);
+
+        Session::put('customer_id', $guestCustomer->id);
+
+        return $guestCustomer->id;
+    }
+
+    /**
      * Display the cart page.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $cartItems = $this->cartService->getCartItems();
-        $cartCount = $this->cartService->getCartItemCount();
+        $customerId = $this->getCustomerId($request);
+        $cartItems = $this->cartService->getCartItems($customerId);
+        $cartCount = $this->cartService->getCartItemCount($customerId);
 
         return Inertia::render('public/Cart', [
             'cartItems' => $cartItems,
@@ -33,10 +65,11 @@ class CartController extends Controller
     /**
      * Get cart items (API endpoint).
      */
-    public function show(): JsonResponse
+    public function show(Request $request): JsonResponse
     {
-        $cartItems = $this->cartService->getCartItems();
-        $cartCount = $this->cartService->getCartItemCount();
+        $customerId = $this->getCustomerId($request);
+        $cartItems = $this->cartService->getCartItems($customerId);
+        $cartCount = $this->cartService->getCartItemCount($customerId);
 
         return response()->json([
             'items' => $cartItems,
@@ -49,22 +82,36 @@ class CartController extends Controller
      */
     public function store(Request $request): JsonResponse|RedirectResponse
     {
-        $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'product_variant_id' => 'nullable|exists:product_variants,id',
-            'quantity' => 'integer|min:1|max:100',
-        ]);
+        try {
+            $validated = $request->validate([
+                'product_id' => 'required|exists:products,id',
+                'product_variant_id' => 'nullable|exists:product_variants,id',
+                'quantity' => 'integer|min:1|max:100',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->wantsJson() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+            throw $e;
+        }
 
         try {
+            $customerId = $this->getCustomerId($request);
+            
             $cartItem = $this->cartService->addToCart(
+                $customerId,
                 $validated['product_id'],
                 $validated['product_variant_id'] ?? null,
                 $validated['quantity'] ?? 1
             );
 
-            $cartCount = $this->cartService->getCartItemCount();
+            $cartCount = $this->cartService->getCartItemCount($customerId);
 
-            if ($request->wantsJson()) {
+            if ($request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => true,
                     'cartItem' => $cartItem,
@@ -74,7 +121,7 @@ class CartController extends Controller
 
             return redirect()->back()->with('success', 'Item added to cart.');
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
+            if ($request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(),
@@ -95,8 +142,14 @@ class CartController extends Controller
         ]);
 
         try {
-            $cartItem = $this->cartService->updateCartItem($id, $validated['quantity']);
-            $cartCount = $this->cartService->getCartItemCount();
+            $customerId = $this->getCustomerId($request);
+            
+            $cartItem = $this->cartService->updateCartItem(
+                $customerId,
+                $id,
+                $validated['quantity']
+            );
+            $cartCount = $this->cartService->getCartItemCount($customerId);
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -125,8 +178,10 @@ class CartController extends Controller
     public function destroy(Request $request, int $id): JsonResponse|RedirectResponse
     {
         try {
-            $this->cartService->removeFromCart($id);
-            $cartCount = $this->cartService->getCartItemCount();
+            $customerId = $this->getCustomerId($request);
+            
+            $this->cartService->removeFromCart($customerId, $id);
+            $cartCount = $this->cartService->getCartItemCount($customerId);
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -153,16 +208,28 @@ class CartController extends Controller
      */
     public function clear(Request $request): JsonResponse|RedirectResponse
     {
-        $this->cartService->clearCart();
+        try {
+            $customerId = $this->getCustomerId($request);
+            
+            $this->cartService->clearCart($customerId);
 
-        if ($request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'cartCount' => 0,
-            ]);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'cartCount' => 0,
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Cart cleared.');
+        } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage());
         }
-
-        return redirect()->back()->with('success', 'Cart cleared.');
     }
 }
-

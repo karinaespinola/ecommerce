@@ -18,7 +18,6 @@ class Image extends Model
         'file_type',
         'file_size',
         'type',
-        'is_primary',
         'order',
     ];
 
@@ -26,7 +25,6 @@ class Image extends Model
     {
         return [
             'file_size' => 'integer',
-            'is_primary' => 'boolean',
             'order' => 'integer',
         ];
     }

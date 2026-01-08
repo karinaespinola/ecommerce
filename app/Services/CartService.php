@@ -2,57 +2,43 @@
 
 namespace App\Services;
 
-use App\Models\Cart;
+use App\Models\ShoppingCart;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
 
 class CartService
 {
     /**
-     * Get cart items for current user or session.
+     * Get cart items for a customer.
      */
-    public function getCartItems(): Collection
+    public function getCartItems(int $customerId): Collection
     {
-        $query = Cart::query()
+        return ShoppingCart::query()
+            ->where('customer_id', $customerId)
             ->with([
                 'product.images',
                 'product.categories',
                 'productVariant.images',
                 'productVariant.attributes'
-            ]);
-
-        if (Auth::check()) {
-            $query->where('user_id', Auth::id());
-        } else {
-            $query->where('session_id', $this->getSessionId());
-        }
-
-        return $query->get();
+            ])
+            ->get();
     }
 
     /**
-     * Get cart item count.
+     * Get cart item count for a customer.
      */
-    public function getCartItemCount(): int
+    public function getCartItemCount(int $customerId): int
     {
-        $query = Cart::query();
-
-        if (Auth::check()) {
-            $query->where('user_id', Auth::id());
-        } else {
-            $query->where('session_id', $this->getSessionId());
-        }
-
-        return $query->sum('quantity');
+        return ShoppingCart::query()
+            ->where('customer_id', $customerId)
+            ->sum('quantity');
     }
 
     /**
      * Add item to cart.
      */
-    public function addToCart(int $productId, ?int $productVariantId = null, int $quantity = 1): Cart
+    public function addToCart(int $customerId, int $productId, ?int $productVariantId = null, int $quantity = 1): ShoppingCart
     {
         // Validate product exists and is active
         $product = Product::where('id', $productId)
@@ -72,15 +58,11 @@ class CartService
             }
         }
 
-        $userId = Auth::check() ? Auth::id() : null;
-        $sessionId = Auth::check() ? null : $this->getSessionId();
-
         // Check if item already exists in cart
-        $existingCart = Cart::query()
+        $existingCart = ShoppingCart::query()
+            ->where('customer_id', $customerId)
             ->where('product_id', $productId)
             ->where('product_variant_id', $productVariantId)
-            ->when($userId, fn($q) => $q->where('user_id', $userId))
-            ->when($sessionId, fn($q) => $q->where('session_id', $sessionId))
             ->first();
 
         if ($existingCart) {
@@ -97,9 +79,8 @@ class CartService
         }
 
         // Create new cart item
-        return Cart::create([
-            'user_id' => $userId,
-            'session_id' => $sessionId,
+        return ShoppingCart::create([
+            'customer_id' => $customerId,
             'product_id' => $productId,
             'product_variant_id' => $productVariantId,
             'quantity' => $quantity,
@@ -109,12 +90,11 @@ class CartService
     /**
      * Update cart item quantity.
      */
-    public function updateCartItem(int $cartId, int $quantity): Cart
+    public function updateCartItem(int $customerId, int $cartId, int $quantity): ShoppingCart
     {
-        $cart = Cart::with(['product', 'productVariant'])
+        $cart = ShoppingCart::with(['product', 'productVariant'])
             ->where('id', $cartId)
-            ->when(Auth::check(), fn($q) => $q->where('user_id', Auth::id()))
-            ->when(!Auth::check(), fn($q) => $q->where('session_id', $this->getSessionId()))
+            ->where('customer_id', $customerId)
             ->firstOrFail();
 
         if ($quantity <= 0) {
@@ -136,81 +116,23 @@ class CartService
     /**
      * Remove item from cart.
      */
-    public function removeFromCart(int $cartId): bool
+    public function removeFromCart(int $customerId, int $cartId): bool
     {
-        $cart = Cart::query()
+        $cart = ShoppingCart::query()
             ->where('id', $cartId)
-            ->when(Auth::check(), fn($q) => $q->where('user_id', Auth::id()))
-            ->when(!Auth::check(), fn($q) => $q->where('session_id', $this->getSessionId()))
+            ->where('customer_id', $customerId)
             ->firstOrFail();
 
         return $cart->delete();
     }
 
     /**
-     * Clear entire cart.
+     * Clear entire cart for a customer.
      */
-    public function clearCart(): int
+    public function clearCart(int $customerId): int
     {
-        $query = Cart::query();
-
-        if (Auth::check()) {
-            $query->where('user_id', Auth::id());
-        } else {
-            $query->where('session_id', $this->getSessionId());
-        }
-
-        return $query->delete();
-    }
-
-    /**
-     * Get or create session ID for guest users.
-     */
-    protected function getSessionId(): string
-    {
-        if (!Session::has('cart_session_id')) {
-            Session::put('cart_session_id', Session::getId());
-        }
-
-        return Session::get('cart_session_id');
-    }
-
-    /**
-     * Merge session cart to user cart (for when user logs in).
-     */
-    public function mergeSessionCartToUser(int $userId): void
-    {
-        $sessionId = Session::get('cart_session_id');
-        
-        if (!$sessionId) {
-            return;
-        }
-
-        $sessionCartItems = Cart::where('session_id', $sessionId)->get();
-
-        foreach ($sessionCartItems as $sessionItem) {
-            // Check if user already has this item
-            $existingCart = Cart::where('user_id', $userId)
-                ->where('product_id', $sessionItem->product_id)
-                ->where('product_variant_id', $sessionItem->product_variant_id)
-                ->first();
-
-            if ($existingCart) {
-                // Merge quantities
-                $existingCart->update([
-                    'quantity' => $existingCart->quantity + $sessionItem->quantity
-                ]);
-                $sessionItem->delete();
-            } else {
-                // Transfer to user
-                $sessionItem->update([
-                    'user_id' => $userId,
-                    'session_id' => null
-                ]);
-            }
-        }
-
-        Session::forget('cart_session_id');
+        return ShoppingCart::query()
+            ->where('customer_id', $customerId)
+            ->delete();
     }
 }
-

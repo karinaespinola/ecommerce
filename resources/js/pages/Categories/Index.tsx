@@ -21,13 +21,14 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
+import { dashboard } from '@/routes/admin';
 
 interface Category {
     id: number;
     name: string;
     slug: string;
     description: string | null;
+    image: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -84,7 +85,7 @@ export default function CategoriesIndex({ categories }: CategoriesIndexProps) {
                             Manage your product categories
                         </p>
                     </div>
-                    <Link href="/categories/create">
+                    <Link href="/admin/categories/create">
                         <Button>
                             <Plus className="size-4" />
                             Add Category
@@ -117,6 +118,9 @@ export default function CategoriesIndex({ categories }: CategoriesIndexProps) {
                                         <thead>
                                             <tr className="border-b">
                                                 <th className="px-4 py-3 text-left text-sm font-medium">
+                                                    Image
+                                                </th>
+                                                <th className="px-4 py-3 text-left text-sm font-medium">
                                                     Name
                                                 </th>
                                                 <th className="px-4 py-3 text-left text-sm font-medium">
@@ -136,6 +140,19 @@ export default function CategoriesIndex({ categories }: CategoriesIndexProps) {
                                                     key={category.id}
                                                     className="border-b transition-colors hover:bg-muted/50"
                                                 >
+                                                    <td className="px-4 py-3">
+                                                        {category.image ? (
+                                                            <img
+                                                                src={`/storage/${category.image}`}
+                                                                alt={category.name}
+                                                                className="w-12 h-12 object-cover rounded"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
+                                                                No Image
+                                                            </div>
+                                                        )}
+                                                    </td>
                                                     <td className="px-4 py-3">
                                                         <div className="font-medium">
                                                             {category.name}

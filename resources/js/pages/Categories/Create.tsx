@@ -1,7 +1,7 @@
 import { type BreadcrumbItem } from '@/types';
 import { Form, Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
+import { dashboard } from '@/routes/admin';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -34,13 +34,15 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function CategoriesCreate() {
     const [processing, setProcessing] = useState(false);
+    const [image, setImage] = useState<File | null>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setProcessing(true);
 
         const formData = new FormData(e.currentTarget);
-        router.post('/categories', formData, {
+        router.post('/admin/categories', formData, {
             preserveScroll: true,
             onFinish: () => setProcessing(false),
         });
@@ -109,6 +111,32 @@ export default function CategoriesCreate() {
                                     rows={4}
                                     placeholder="Category description"
                                 />
+                                <InputError message="" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="image">Category Image</Label>
+                                <Input
+                                    ref={imageInputRef}
+                                    id="image"
+                                    name="image"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        setImage(file);
+                                    }}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Upload an image for this category (max 2MB)
+                                </p>
+                                {image && (
+                                    <div className="mt-2">
+                                        <p className="text-sm text-muted-foreground">
+                                            Selected: {image.name}
+                                        </p>
+                                    </div>
+                                )}
                                 <InputError message="" />
                             </div>
 

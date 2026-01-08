@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
+import { dashboard } from '@/routes/admin';
 
 interface Category {
     id: number;
@@ -45,7 +45,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Products',
-        href: '/products',
+        href: '/admin/products',
     },
     {
         title: 'Create',
@@ -54,9 +54,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 interface VariantData {
     attributes: Record<number, string>;
-    price: string;
-    stock: string;
+    price: number;
+    stock: number;
     images: File[];
+    primaryNewImageIndex?: number;
     sku?: string;
 }
 
@@ -67,6 +68,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
     const [isVariable, setIsVariable] = useState(false);
     const [variants, setVariants] = useState<VariantData[]>([]);
     const [productImage, setProductImage] = useState<File | null>(null);
+    const [featuredImageId, setFeaturedImageId] = useState<string | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const pageProps = usePage().props as { errors?: Record<string, string | string[]> };
     const errors = pageProps.errors || {};
@@ -115,8 +117,8 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                     formData.append(`variants[${variantIndex}][attributes][${attrId}]`, value);
                 });
                 // Add price, stock, and images at the variant level
-                formData.append(`variants[${variantIndex}][price]`, variant.price);
-                formData.append(`variants[${variantIndex}][stock]`, variant.stock);
+                formData.append(`variants[${variantIndex}][price]`, String(variant.price));
+                formData.append(`variants[${variantIndex}][stock]`, String(variant.stock));
                 // Add multiple images for this variant
                 if (variant.images && variant.images.length > 0) {
                     variant.images.forEach((image) => {
@@ -126,7 +128,12 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
             });
         }
 
-        router.post('/products', formData, {
+        // Add featured image ID if specified
+        if (featuredImageId) {
+            formData.append('featured_image_id', featuredImageId);
+        }
+
+        router.post('/admin/products', formData, {
             preserveScroll: true,
             onFinish: () => setProcessing(false),
         });
@@ -138,7 +145,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
 
             <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                    <Link href="/products">
+                    <Link href="/admin/products">
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -225,6 +232,20 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                                 </div>
                             </div>
 
+                            {!isVariable && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="stock">Stock</Label>
+                                    <Input
+                                        id="stock"
+                                        name="stock"
+                                        type="number"
+                                        min="0"
+                                        placeholder="0"
+                                    />
+                                    <InputError message={getErrorMessage('stock')} />
+                                </div>
+                            )}
+
                             <div className="flex items-center gap-6">
                                 <div className="flex items-center gap-2">
                                     <Checkbox
@@ -293,6 +314,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                         attributes={attributes}
                         isVariable={isVariable}
                         onVariantsChange={setVariants}
+                        onFeaturedImageChange={setFeaturedImageId}
                     />
 
                     {categories.length > 0 && (
@@ -337,7 +359,7 @@ export default function ProductsCreate({ categories, attributes }: ProductsCreat
                         <Button type="submit" disabled={processing}>
                             {processing ? 'Creating...' : 'Create Product'}
                         </Button>
-                        <Link href="/products">
+                        <Link href="/admin/products">
                             <Button type="button" variant="outline">
                                 Cancel
                             </Button>

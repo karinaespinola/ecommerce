@@ -47,9 +47,9 @@ class ProductVariant extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function cartItems(): HasMany
+    public function shoppingCarts(): HasMany
     {
-        return $this->hasMany(Cart::class);
+        return $this->hasMany(ShoppingCart::class);
     }
 
     public function images(): MorphMany

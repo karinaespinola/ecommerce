@@ -1,5 +1,5 @@
 import { Plus, X } from 'lucide-react';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
 import AttributeModal from '@/components/AttributeModal';
 import { Button } from '@/components/ui/button';
@@ -27,34 +27,146 @@ interface AttributeWithValues {
     values: string[];
 }
 
+interface VariantImage {
+    id?: number;
+    image_path: string;
+    file_name: string;
+}
+
 interface VariantData {
     attributes: Record<number, string>;
-    price: string;
-    stock: string;
+    price: number;
+    stock: number;
     images: File[];
+    existingImages: VariantImage[]; // Always defined to ensure deletion tracking works
     sku?: string;
+}
+
+interface InitialVariant {
+    id?: number;
+    attributes: Array<{ id: number; pivot: { value: string } }>;
+    price: string | number;
+    stock: string | number;
+    sku?: string | null;
+    images?: Array<{
+        id: number;
+        image_path: string;
+        file_name: string;
+    }>;
 }
 
 interface ProductVariantsManagerProps {
     attributes: Attribute[];
     isVariable: boolean;
     onVariantsChange?: (variants: VariantData[]) => void;
+    onFeaturedImageChange?: (featuredImageId: string | null) => void; // Format: "variantKey-imageType-imageId" or "variantKey-imageType-imageIndex"
+    initialVariants?: InitialVariant[];
+    initialFeaturedImageId?: number | null;
 }
 
 export default function ProductVariantsManager({
     attributes,
     isVariable,
     onVariantsChange,
+    onFeaturedImageChange,
+    initialVariants,
+    initialFeaturedImageId,
 }: ProductVariantsManagerProps) {
     const [selectedAttributes, setSelectedAttributes] = useState<AttributeWithValues[]>([]);
     const [isAttributeModalOpen, setIsAttributeModalOpen] = useState(false);
     const [availableAttributes, setAvailableAttributes] = useState<Attribute[]>(attributes);
     const [newValueInputs, setNewValueInputs] = useState<Record<number, string>>({});
     const [variantData, setVariantData] = useState<Record<string, VariantData>>({});
+    const [featuredImageId, setFeaturedImageId] = useState<string | null>(null);
+    const isInitializedRef = useRef(false);
+    const featuredImageInitializedRef = useRef(false);
 
     useEffect(() => {
         setAvailableAttributes(attributes);
     }, [attributes]);
+
+    // Reset initialization flag when initialVariants change (e.g., after save and reload)
+    useEffect(() => {
+        if (initialVariants && initialVariants.length > 0) {
+            isInitializedRef.current = false;
+            featuredImageInitializedRef.current = false;
+        }
+    }, [initialVariants]);
+
+    // Initialize variantData and selectedAttributes from existing variants when editing
+    useEffect(() => {
+        if (initialVariants && initialVariants.length > 0 && !isInitializedRef.current) {
+            // Initialize variantData with existing variant data
+            const initialVariantData: Record<string, VariantData> = {};
+            const attributeMap = new Map<number, Set<string>>();
+            
+            initialVariants.forEach((variant) => {
+                const variantAttributes: Record<number, string> = {};
+                variant.attributes.forEach((attr) => {
+                    variantAttributes[attr.id] = attr.pivot.value;
+                    
+                    // Also build attribute map for selectedAttributes
+                    if (!attributeMap.has(attr.id)) {
+                        attributeMap.set(attr.id, new Set());
+                    }
+                    attributeMap.get(attr.id)!.add(attr.pivot.value);
+                });
+                
+                const key = Object.entries(variantAttributes)
+                    .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                    .map(([id, value]) => `${id}:${value}`)
+                    .join('|');
+
+                // Ensure images are loaded - handle both array and collection
+                // Always set existingImages to an array (even if empty) so the Edit page
+                // knows to send existing_image_ids for deletion tracking
+                const variantImages = variant.images;
+                let existingImages: VariantImage[] = [];
+                
+                if (variantImages) {
+                    if (Array.isArray(variantImages)) {
+                        existingImages = variantImages.map(img => ({
+                            id: img.id,
+                            image_path: img.image_path,
+                            file_name: img.file_name,
+                        }));
+                    } else if (typeof variantImages === 'object' && 'length' in variantImages) {
+                        // Handle Laravel collection-like objects
+                        existingImages = Array.from(variantImages as any).map((img: any) => ({
+                            id: img.id,
+                            image_path: img.image_path,
+                            file_name: img.file_name,
+                        }));
+                    }
+                }
+                // existingImages is always an array (empty if no images)
+                // This ensures the Edit page will always send existing_image_ids for deletion tracking
+                
+                initialVariantData[key] = {
+                    attributes: variantAttributes,
+                    price: variant.price != null ? Number(variant.price) : 0,
+                    stock: variant.stock != null ? Number(variant.stock) : 0,
+                    images: [], // New file uploads
+                    existingImages: existingImages, // Always an array, never undefined
+                    sku: variant.sku ?? '',
+                };
+            });
+            
+            // Set both variantData and selectedAttributes together to avoid race conditions
+            setVariantData(initialVariantData);
+            
+            // Convert to selectedAttributes format
+            const initialSelectedAttributes: AttributeWithValues[] = Array.from(attributeMap.entries()).map(
+                ([attributeId, values]) => ({
+                    attributeId,
+                    values: Array.from(values),
+                })
+            );
+            
+            setSelectedAttributes(initialSelectedAttributes);
+            isInitializedRef.current = true;
+        }
+    }, [initialVariants, initialFeaturedImageId, onFeaturedImageChange]);
 
     const handleAddAttribute = () => {
         setSelectedAttributes([
@@ -202,35 +314,132 @@ export default function ProductVariantsManager({
     // Initialize variant data when variants are generated
     // Preserve existing data when combinations change
     useEffect(() => {
+        // Don't run during initial load from existing variants
+        // Wait until initialization is complete and selectedAttributes are set
+        if (initialVariants && initialVariants.length > 0 && !isInitializedRef.current) {
+            return;
+        }
+        
+        // Don't clear existing data if generateVariants is empty (during initialization)
+        if (generateVariants.length === 0 && initialVariants && initialVariants.length > 0) {
+            return;
+        }
+        
         setVariantData((prevVariantData) => {
-            const newVariantData: Record<string, VariantData> = {};
+            // If we have existing variant data from initialization, merge it with generated variants
+            const newVariantData: Record<string, VariantData> = { ...prevVariantData };
+            
             generateVariants.forEach((variant) => {
                 const key = getVariantKey(variant);
-                if (prevVariantData[key]) {
+                if (newVariantData[key]) {
                     // Preserve existing data, only update attributes
+                    // Explicitly preserve existingImages, price, stock, and sku to ensure they're not lost
                     newVariantData[key] = {
-                        ...prevVariantData[key],
+                        ...newVariantData[key],
                         attributes: variant,
+                        existingImages: newVariantData[key].existingImages || [],
+                        price: newVariantData[key].price ?? 0,
+                        stock: newVariantData[key].stock ?? 0,
+                        sku: newVariantData[key].sku ?? '',
                     };
                 } else {
                     // Create new variant with default values
                     newVariantData[key] = {
                         attributes: variant,
-                        price: '',
-                        stock: '',
+                        price: 0,
+                        stock: 0,
                         images: [],
+                        existingImages: [],
                         sku: '',
                     };
                 }
             });
+            
+            // Remove variants that are no longer in generateVariants (user removed attributes/values)
+            const generatedKeys = new Set(generateVariants.map(v => getVariantKey(v)));
+            Object.keys(newVariantData).forEach(key => {
+                if (!generatedKeys.has(key)) {
+                    delete newVariantData[key];
+                }
+            });
+            
             return newVariantData;
         });
-    }, [generateVariants, getVariantKey]);
+    }, [generateVariants, getVariantKey, initialVariants]);
+
+    // Initialize featured image ID after variants are generated
+    // This runs after generateVariants is ready, using the same index that's used in the display
+    useEffect(() => {
+        if (generateVariants.length > 0 && variantData && Object.keys(variantData).length > 0 && isInitializedRef.current) {
+            // Only initialize once if we haven't initialized yet and we have an initialFeaturedImageId
+            if (!featuredImageInitializedRef.current && initialFeaturedImageId) {
+                // Find which variant contains the featured image using initialFeaturedImageId
+                // We need to match the variant by its key (attribute combination) to get the correct index
+                let foundFeaturedImageId: string | null = null;
+                
+                console.log('Initializing featured image, looking for:', initialFeaturedImageId);
+                console.log('generateVariants:', generateVariants);
+                console.log('variantData keys:', Object.keys(variantData));
+                
+                for (let variantIndex = 0; variantIndex < generateVariants.length; variantIndex++) {
+                    const variant = generateVariants[variantIndex];
+                    const variantKey = getVariantKey(variant);
+                    const data = variantData[variantKey];
+                    
+                    console.log(`Checking variant ${variantIndex}, key: ${variantKey}, has data:`, !!data);
+                    
+                    if (data && data.existingImages && data.existingImages.length > 0) {
+                        console.log(`Variant ${variantIndex} has ${data.existingImages.length} images`);
+                        for (const img of data.existingImages) {
+                            if (!img.id) {
+                                console.warn('Image missing id:', img);
+                                continue;
+                            }
+                            
+                            // Compare with both number and string to handle type mismatches
+                            const imgIdNum = typeof img.id === 'number' ? img.id : Number(img.id);
+                            const initialIdNum = typeof initialFeaturedImageId === 'number' ? initialFeaturedImageId : Number(initialFeaturedImageId);
+                            
+                            console.log(`Comparing image id ${img.id} (${imgIdNum}) with initial ${initialFeaturedImageId} (${initialIdNum})`);
+                            
+                            if (imgIdNum === initialIdNum || String(img.id) === String(initialFeaturedImageId)) {
+                                // Use the same format as in the display: existing-{idx}-{image.id}
+                                // This index matches the index used in the table display
+                                foundFeaturedImageId = `existing-${variantIndex}-${img.id}`;
+                                console.log('Found featured image! Setting to:', foundFeaturedImageId);
+                                break;
+                            }
+                        }
+                    }
+                    if (foundFeaturedImageId) break;
+                }
+                
+                if (foundFeaturedImageId) {
+                    setFeaturedImageId(foundFeaturedImageId);
+                    if (onFeaturedImageChange) {
+                        onFeaturedImageChange(foundFeaturedImageId);
+                    }
+                    featuredImageInitializedRef.current = true;
+                } else {
+                    console.warn('Could not find featured image with id:', initialFeaturedImageId);
+                    // Mark as initialized anyway to prevent infinite loops
+                    featuredImageInitializedRef.current = true;
+                }
+            } else if (!initialFeaturedImageId) {
+                // If there's no initialFeaturedImageId, mark as initialized anyway
+                featuredImageInitializedRef.current = true;
+            }
+        }
+    }, [initialFeaturedImageId, generateVariants, variantData, getVariantKey, onFeaturedImageChange]);
 
     // Notify parent component when variant data changes
     useEffect(() => {
         if (onVariantsChange) {
-            const variants = Object.values(variantData);
+            // Ensure all variants have existingImages defined (never undefined)
+            const variants = Object.values(variantData).map(variant => ({
+                ...variant,
+                existingImages: variant.existingImages || [],
+            }));
             onVariantsChange(variants);
         }
     }, [variantData, onVariantsChange]);
@@ -238,15 +447,26 @@ export default function ProductVariantsManager({
     const handleVariantFieldChange = (
         variantKey: string,
         field: keyof VariantData,
-        value: string | File[]
+        value: string | number | File[]
     ) => {
-        setVariantData((prev) => ({
-            ...prev,
-            [variantKey]: {
-                ...prev[variantKey],
-                [field]: value,
-            },
-        }));
+        setVariantData((prev) => {
+            let processedValue: string | number | File[] = value;
+            
+            // Convert string inputs to numbers for price and stock
+            if (field === 'price' && typeof value === 'string') {
+                processedValue = parseFloat(value) || 0;
+            } else if (field === 'stock' && typeof value === 'string') {
+                processedValue = parseInt(value, 10) || 0;
+            }
+            
+            return {
+                ...prev,
+                [variantKey]: {
+                    ...prev[variantKey],
+                    [field]: processedValue,
+                },
+            };
+        });
     };
 
     const handleImageChange = (variantKey: string, files: FileList | null) => {
@@ -258,10 +478,36 @@ export default function ProductVariantsManager({
         }
     };
 
-    const handleRemoveImage = (variantKey: string, imageIndex: number) => {
+    const handleRemoveImage = (variantIndex: number, imageIndex: number) => {
+        // Find variant key from index
+        const variant = generateVariants[variantIndex];
+        if (!variant) return;
+        
+        const variantKey = getVariantKey(variant);
         setVariantData((prev) => {
             const current = prev[variantKey];
+            if (!current) return prev;
+            
             const newImages = current.images.filter((_, idx) => idx !== imageIndex);
+            // Clear featured if the removed image was featured
+            const featuredId = `new-${variantIndex}-${imageIndex}`;
+            if (featuredImageId === featuredId) {
+                setFeaturedImageId(null);
+                if (onFeaturedImageChange) {
+                    onFeaturedImageChange(null);
+                }
+            } else if (featuredImageId && featuredImageId.startsWith(`new-${variantIndex}-`)) {
+                // Update featured image ID if indices shifted
+                const parts = featuredImageId.split('-');
+                const featuredImageIdx = parseInt(parts[2]);
+                if (!isNaN(featuredImageIdx) && featuredImageIdx > imageIndex) {
+                    const newFeaturedId = `new-${variantIndex}-${featuredImageIdx - 1}`;
+                    setFeaturedImageId(newFeaturedId);
+                    if (onFeaturedImageChange) {
+                        onFeaturedImageChange(newFeaturedId);
+                    }
+                }
+            }
             return {
                 ...prev,
                 [variantKey]: {
@@ -270,6 +516,52 @@ export default function ProductVariantsManager({
                 },
             };
         });
+    };
+
+    const handleRemoveExistingImage = (variantIndex: number, imageId: number) => {
+        // Find variant key from index
+        const variant = generateVariants[variantIndex];
+        if (!variant) return;
+        
+        const variantKey = getVariantKey(variant);
+        setVariantData((prev) => {
+            const current = prev[variantKey];
+            if (!current) return prev;
+            
+            // Always ensure existingImages is an array (never undefined)
+            // This is important so the Edit page knows to send existing_image_ids for deletion tracking
+            const currentExistingImages = current.existingImages || [];
+            const newExistingImages = currentExistingImages.filter((img) => img.id !== imageId);
+            
+            // Clear featured if the removed image was featured
+            const featuredId = `existing-${variantIndex}-${imageId}`;
+            if (featuredImageId === featuredId) {
+                setFeaturedImageId(null);
+                if (onFeaturedImageChange) {
+                    onFeaturedImageChange(null);
+                }
+            }
+            
+            // Create updated variant data with existingImages always defined as an array
+            const updatedVariant = {
+                ...current,
+                // Always set existingImages to an array, even if empty
+                // This ensures the Edit page will send existing_image_ids for deletion tracking
+                existingImages: newExistingImages,
+            };
+            
+            return {
+                ...prev,
+                [variantKey]: updatedVariant,
+            };
+        });
+    };
+
+    const handleSetFeaturedImage = (imageId: string) => {
+        setFeaturedImageId(imageId);
+        if (onFeaturedImageChange) {
+            onFeaturedImageChange(imageId);
+        }
     };
 
     if (!isVariable) {
@@ -465,11 +757,13 @@ export default function ProductVariantsManager({
                                                 const variantKey = getVariantKey(variant);
                                                 const data = variantData[variantKey] || {
                                                     attributes: variant,
-                                                    price: '',
-                                                    stock: '',
+                                                    price: 0,
+                                                    stock: 0,
                                                     images: [],
+                                                    existingImages: [],
                                                     sku: '',
                                                 };
+
                                                 const variantString = Object.entries(variant)
                                                     .sort(([a], [b]) => parseInt(a) - parseInt(b))
                                                     .map(([attrId, value]) => {
@@ -493,7 +787,7 @@ export default function ProductVariantsManager({
                                                                 type="number"
                                                                 step="0.01"
                                                                 min="0"
-                                                                value={data.price}
+                                                                value={data.price != null ? String(data.price) : ''}
                                                                 onChange={(e) =>
                                                                     handleVariantFieldChange(
                                                                         variantKey,
@@ -511,7 +805,7 @@ export default function ProductVariantsManager({
                                                                 id={`stock-${idx}`}
                                                                 type="number"
                                                                 min="0"
-                                                                value={data.stock}
+                                                                value={data.stock != null ? String(data.stock) : ''}
                                                                 onChange={(e) =>
                                                                     handleVariantFieldChange(
                                                                         variantKey,
@@ -551,28 +845,112 @@ export default function ProductVariantsManager({
                                                                     }}
                                                                     className="cursor-pointer text-xs"
                                                                 />
-                                                                {data.images && data.images.length > 0 && (
-                                                                    <div className="flex flex-wrap gap-1.5">
-                                                                        {data.images.map((image, imgIdx) => (
-                                                                            <Badge
-                                                                                key={imgIdx}
-                                                                                variant="secondary"
-                                                                                className="flex items-center gap-1 px-2 py-0.5 text-xs"
-                                                                            >
-                                                                                <span className="truncate max-w-[120px]">
-                                                                                    {image.name}
-                                                                                </span>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() =>
-                                                                                        handleRemoveImage(variantKey, imgIdx)
-                                                                                    }
-                                                                                    className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                                                                {/* Existing images */}
+                                                                {data.existingImages && data.existingImages.length > 0 && (
+                                                                    <div className="space-y-1.5">
+                                                                        {data.existingImages.map((image) => {
+                                                                            if (!image.id) return null;
+                                                                            const imageId = `existing-${idx}-${image.id}`;
+                                                                            const isFeatured = featuredImageId === imageId;
+                                                                            // Debug log for first image
+                                                                            if (idx === 0 && data.existingImages.indexOf(image) === 0) {
+                                                                                console.log('Rendering image, featuredImageId:', featuredImageId, 'imageId:', imageId, 'isFeatured:', isFeatured);
+                                                                            }
+                                                                            return (
+                                                                                <div
+                                                                                    key={image.id}
+                                                                                    className={`flex items-center gap-2 p-1.5 border rounded text-xs ${
+                                                                                        isFeatured ? 'border-primary bg-primary/5' : ''
+                                                                                    }`}
                                                                                 >
-                                                                                    <X className="size-3" />
-                                                                                </button>
-                                                                            </Badge>
-                                                                        ))}
+                                                                                    <input
+                                                                                        type="radio"
+                                                                                        name="product-featured-image"
+                                                                                        id={`featured-existing-${variantKey}-${image.id}`}
+                                                                                        checked={isFeatured}
+                                                                                        onChange={() => handleSetFeaturedImage(imageId)}
+                                                                                        className="cursor-pointer"
+                                                                                    />
+                                                                                    <label
+                                                                                        htmlFor={`featured-existing-${variantKey}-${image.id}`}
+                                                                                        className="flex items-center gap-1.5 flex-1 cursor-pointer"
+                                                                                    >
+                                                                                        <img
+                                                                                            src={`/storage/${image.image_path}`}
+                                                                                            alt={image.file_name}
+                                                                                            className="w-6 h-6 object-cover rounded"
+                                                                                        />
+                                                                                        <span className="truncate flex-1">
+                                                                                            {image.file_name}
+                                                                                        </span>
+                                                                                        {isFeatured && (
+                                                                                            <Badge variant="default" className="text-xs">
+                                                                                                Featured
+                                                                                            </Badge>
+                                                                                        )}
+                                                                                    </label>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() =>
+                                                                                            handleRemoveExistingImage(idx, image.id!)
+                                                                                        }
+                                                                                        className="ml-auto hover:bg-destructive/20 rounded-full p-0.5"
+                                                                                    >
+                                                                                        <X className="size-3" />
+                                                                                    </button>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )}
+                                                                {/* New file uploads */}
+                                                                {data.images && data.images.length > 0 && (
+                                                                    <div className="space-y-1.5">
+                                                                        {data.images.map((image, imgIdx) => {
+                                                                            const imageId = `new-${idx}-${imgIdx}`;
+                                                                            const isFeatured = featuredImageId === imageId;
+                                                                            // Use file name + size + lastModified for stable key
+                                                                            const imageKey = `${image.name}-${image.size}-${image.lastModified}-${imgIdx}`;
+                                                                            return (
+                                                                                <div
+                                                                                    key={imageKey}
+                                                                                    className={`flex items-center gap-2 p-1.5 border rounded text-xs ${
+                                                                                        isFeatured ? 'border-primary bg-primary/5' : ''
+                                                                                    }`}
+                                                                                >
+                                                                                    <input
+                                                                                        type="radio"
+                                                                                        name="product-featured-image"
+                                                                                        id={`featured-new-${variantKey}-${imgIdx}`}
+                                                                                        checked={isFeatured}
+                                                                                        onChange={() => handleSetFeaturedImage(imageId)}
+                                                                                        className="cursor-pointer"
+                                                                                    />
+                                                                                    <label
+                                                                                        htmlFor={`featured-new-${variantKey}-${imgIdx}`}
+                                                                                        className="flex items-center gap-1.5 flex-1 cursor-pointer"
+                                                                                    >
+                                                                                        <span className="truncate flex-1">
+                                                                                            {image.name}
+                                                                                        </span>
+                                                                                        {isFeatured && (
+                                                                                            <Badge variant="default" className="text-xs">
+                                                                                                Featured
+                                                                                            </Badge>
+                                                                                        )}
+                                                                                    </label>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() =>
+                                                                                            handleRemoveImage(idx, imgIdx)
+                                                                                        }
+                                                                                        className="ml-auto hover:bg-destructive/20 rounded-full p-0.5"
+                                                                                    >
+                                                                                        <X className="size-3" />
+                                                                                    </button>
+                                                                                </div>
+                                                                            );
+                                                                        })}
                                                                     </div>
                                                                 )}
                                                             </div>

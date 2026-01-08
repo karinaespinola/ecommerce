@@ -58,7 +58,7 @@ class AttributeController extends Controller
         }
 
         return redirect()
-            ->route('attributes.index')
+            ->route('admin.attributes.index')
             ->with('success', 'Attribute created successfully.');
     }
 
@@ -112,7 +112,7 @@ class AttributeController extends Controller
         $this->attributeService->update($attribute, $request->validated());
 
         return redirect()
-            ->route('attributes.index')
+            ->route('admin.attributes.index')
             ->with('success', 'Attribute updated successfully.');
     }
 
@@ -134,7 +134,7 @@ class AttributeController extends Controller
         }
 
         return redirect()
-            ->route('attributes.index')
+            ->route('admin.attributes.index')
             ->with('success', 'Attribute deleted successfully.');
     }
 }

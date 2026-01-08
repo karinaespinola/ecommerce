@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
+import { dashboard } from '@/routes/admin';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -44,7 +44,7 @@ export default function AttributesCreate() {
         if (!formData.has('is_active')) {
             formData.append('is_active', '0');
         }
-        router.post('/attributes', formData, {
+        router.post('/admin/attributes', formData, {
             preserveScroll: true,
             onFinish: () => setProcessing(false),
         });

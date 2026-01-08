@@ -7,6 +7,7 @@ import { ShoppingCart, Heart, Minus, Plus } from 'lucide-react';
 import { useState } from 'react';
 import cart from '@/routes/cart';
 import { router } from '@inertiajs/react';
+import { getCsrfToken } from '@/lib/utils';
 
 interface Category {
     id: number;
@@ -34,7 +35,6 @@ interface ProductVariant {
 interface ProductImage {
     id: number;
     image_path: string;
-    is_primary: boolean;
     order: number;
 }
 
@@ -78,19 +78,26 @@ export default function ProductDetail({ product }: ProductDetailProps) {
     const getPrimaryImage = (): string | null => {
         const images = getProductImages();
         if (images.length === 0) return null;
-        const primaryImage = images.find(img => img.is_primary) || images[0];
-        return `/storage/${primaryImage.image_path}`;
+        return `/storage/${images[0].image_path}`;
     };
 
     const handleAddToCart = async () => {
+        console.log('Add to cart clicked', { productId: product.id, variantId: selectedVariant?.id, quantity });
         setLoading(true);
         try {
+            const csrfToken = getCsrfToken();
+            if (!csrfToken) {
+                throw new Error('CSRF token not found');
+            }
+
             const response = await fetch(cart.store().url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     product_id: product.id,
                     product_variant_id: product.is_variable && selectedVariant ? selectedVariant.id : null,
@@ -98,12 +105,42 @@ export default function ProductDetail({ product }: ProductDetailProps) {
                 }),
             });
             
+            const contentType = response.headers.get('content-type');
+            const isJson = contentType && contentType.includes('application/json');
+            
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to add to cart');
+                let errorMessage = 'Failed to add to cart';
+                if (isJson) {
+                    try {
+                        const error = await response.json();
+                        errorMessage = error.message || errorMessage;
+                    } catch (e) {
+                        console.error('Failed to parse error response:', e);
+                    }
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON error response:', text);
+                    errorMessage = `Server error: ${response.status} ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
             }
             
-            window.dispatchEvent(new Event('cartUpdated'));
+            let data = null;
+            if (isJson) {
+                data = await response.json();
+                console.log('Item added to cart:', data);
+                
+                // Update cart count immediately from response
+                if (data.cartCount !== undefined) {
+                    window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { cartCount: data.cartCount } }));
+                } else {
+                    window.dispatchEvent(new Event('cartUpdated'));
+                }
+            } else {
+                window.dispatchEvent(new Event('cartUpdated'));
+            }
+            
+            // Navigate to cart page
             router.visit(cart.index().url);
         } catch (error: any) {
             console.error('Failed to add to cart:', error);

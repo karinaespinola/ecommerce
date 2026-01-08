@@ -12,7 +12,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
+import { dashboard } from '@/routes/admin';
 
 interface Category {
     id: number;
@@ -44,7 +44,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Products',
-        href: '/products',
+        href: '/admin/products',
     },
     {
         title: 'View',
@@ -59,7 +59,7 @@ export default function ProductsShow({ product }: ProductsShowProps) {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link href="/products">
+                        <Link href="/admin/products">
                             <Button variant="ghost" size="sm">
                                 <ArrowLeft className="size-4" />
                             </Button>
@@ -71,7 +71,7 @@ export default function ProductsShow({ product }: ProductsShowProps) {
                             </p>
                         </div>
                     </div>
-                    <Link href={`/products/${product.id}/edit`}>
+                    <Link href={`/admin/products/${product.id}/edit`}>
                         <Button>
                             <Edit className="size-4" />
                             Edit Product

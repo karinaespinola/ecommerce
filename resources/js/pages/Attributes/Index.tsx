@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
+import { dashboard } from '@/routes/admin';
 
 interface Attribute {
     id: number;
@@ -85,7 +85,7 @@ export default function AttributesIndex({ attributes }: AttributesIndexProps) {
                             Manage your product attributes
                         </p>
                     </div>
-                    <Link href="/attributes/create">
+                    <Link href="/admin/attributes/create">
                         <Button>
                             <Plus className="size-4" />
                             Add Attribute

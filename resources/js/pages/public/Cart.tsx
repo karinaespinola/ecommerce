@@ -7,11 +7,11 @@ import { useState, useEffect } from 'react';
 import cart from '@/routes/cart';
 import publicProducts from '@/routes/public/products';
 import { Link } from '@inertiajs/react';
+import { getCsrfToken } from '@/lib/utils';
 
 interface ProductImage {
     id: number;
     image_path: string;
-    is_primary: boolean;
 }
 
 interface Product {
@@ -69,12 +69,19 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
 
         setUpdating({ ...updating, [cartId]: true });
         try {
+            const csrfToken = getCsrfToken();
+            if (!csrfToken) {
+                throw new Error('CSRF token not found');
+            }
+
             const response = await fetch(cart.update({ id: cartId }).url, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     quantity: newQuantity,
                 }),
@@ -100,11 +107,18 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
     const removeItem = async (cartId: number) => {
         setLoading({ ...loading, [cartId]: true });
         try {
+            const csrfToken = getCsrfToken();
+            if (!csrfToken) {
+                throw new Error('CSRF token not found');
+            }
+
             const response = await fetch(cart.destroy({ id: cartId }).url, {
                 method: 'DELETE',
                 headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
+                credentials: 'same-origin',
             });
             
             if (!response.ok) {
@@ -126,11 +140,18 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
         if (!confirm('Are you sure you want to clear your cart?')) return;
 
         try {
+            const csrfToken = getCsrfToken();
+            if (!csrfToken) {
+                throw new Error('CSRF token not found');
+            }
+
             const response = await fetch(cart.clear().url, {
                 method: 'DELETE',
                 headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
+                credentials: 'same-origin',
             });
             
             if (!response.ok) {
@@ -150,8 +171,7 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
             // For variants, we'd need variant images - for now use product image
         }
         if (item.product.images && item.product.images.length > 0) {
-            const primaryImage = item.product.images.find(img => img.is_primary) || item.product.images[0];
-            return `/storage/${primaryImage.image_path}`;
+            return `/storage/${item.product.images[0].image_path}`;
         }
         return null;
     };

@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Category;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class CategoryService
@@ -57,6 +59,11 @@ class CategoryService
         // Ensure slug is unique
         $data['slug'] = $this->makeSlugUnique($data['slug']);
 
+        // Handle image upload
+        if (isset($data['image']) && $data['image'] instanceof UploadedFile) {
+            $data['image'] = $this->storeImage($data['image']);
+        }
+
         return Category::create($data);
     }
 
@@ -74,6 +81,21 @@ class CategoryService
             $data['slug'] = $this->makeSlugUnique($data['slug'], $category->id);
         }
 
+        // Handle image upload
+        if (isset($data['image']) && $data['image'] instanceof UploadedFile) {
+            // Delete old image if exists
+            if ($category->image) {
+                Storage::disk('public')->delete($category->image);
+            }
+            $data['image'] = $this->storeImage($data['image']);
+        } elseif (isset($data['image']) && $data['image'] === '') {
+            // Empty string means delete image
+            if ($category->image) {
+                Storage::disk('public')->delete($category->image);
+            }
+            $data['image'] = null;
+        }
+
         $category->update($data);
 
         return $category->fresh();
@@ -84,7 +106,20 @@ class CategoryService
      */
     public function delete(Category $category): bool
     {
+        // Delete image if exists
+        if ($category->image) {
+            Storage::disk('public')->delete($category->image);
+        }
+
         return $category->delete();
+    }
+
+    /**
+     * Store category image.
+     */
+    protected function storeImage(UploadedFile $file): string
+    {
+        return $file->store('categories', 'public');
     }
 
     /**
