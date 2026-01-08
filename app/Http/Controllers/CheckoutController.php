@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\CartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -123,7 +125,7 @@ class CheckoutController extends Controller
                 'shipping_address' => $validated['shipping_address'],
             ]);
 
-            // Create order items
+            // Create order items and decrease stock
             foreach ($cartItems as $item) {
                 $price = $item['product_variant'] 
                     ? (float) $item['product_variant']['price'] 
@@ -148,6 +150,21 @@ class CheckoutController extends Controller
                     'price' => $price,
                     'subtotal' => $price * $item['quantity'],
                 ]);
+
+                // Decrease stock (with row locking to prevent race conditions)
+                if ($item['product_variant_id']) {
+                    // Product has variant - decrease variant stock
+                    $variant = ProductVariant::lockForUpdate()->find($item['product_variant_id']);
+                    if ($variant && $variant->stock !== null) {
+                        $variant->decrement('stock', $item['quantity']);
+                    }
+                } else {
+                    // Product without variant - decrease product stock
+                    $product = Product::lockForUpdate()->find($item['product_id']);
+                    if ($product && $product->stock !== null) {
+                        $product->decrement('stock', $item['quantity']);
+                    }
+                }
             }
 
             // Update customer default addresses
