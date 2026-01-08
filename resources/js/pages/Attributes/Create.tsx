@@ -25,7 +25,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Attributes',
-        href: '/attributes',
+        href: '/admin/attributes',
     },
     {
         title: 'Create',
@@ -56,7 +56,7 @@ export default function AttributesCreate() {
 
             <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                    <Link href="/attributes">
+                    <Link href="/admin/attributes">
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -125,7 +125,7 @@ export default function AttributesCreate() {
                                 <Button type="submit" disabled={processing}>
                                     {processing ? 'Creating...' : 'Create Attribute'}
                                 </Button>
-                                <Link href="/attributes">
+                                <Link href="/admin/attributes">
                                     <Button type="button" variant="outline">
                                         Cancel
                                     </Button>

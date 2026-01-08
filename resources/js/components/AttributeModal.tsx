@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getCsrfToken } from '@/lib/utils';
 
 interface AttributeModalProps {
     isOpen: boolean;
@@ -49,19 +50,6 @@ export default function AttributeModal({
         }
     }, [isOpen]);
 
-    const getCsrfToken = () => {
-        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        if (token) return token;
-        
-        const cookies = document.cookie.split(';');
-        const xsrfCookie = cookies.find(cookie => cookie.trim().startsWith('XSRF-TOKEN='));
-        if (xsrfCookie) {
-            return decodeURIComponent(xsrfCookie.split('=')[1]);
-        }
-        
-        return null;
-    };
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         e.stopPropagation();
@@ -74,15 +62,20 @@ export default function AttributeModal({
         setErrors({});
 
         const csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            setErrors({ name: 'CSRF token not found. Please refresh the page.' });
+            setProcessing(false);
+            return;
+        }
 
         try {
-            const response = await fetch('/attributes', {
+            const response = await fetch('/admin/attributes', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json',
-                    ...(csrfToken && { 'X-XSRF-TOKEN': csrfToken }),
+                    'X-XSRF-TOKEN': csrfToken,
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({

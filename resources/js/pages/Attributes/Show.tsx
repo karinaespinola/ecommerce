@@ -43,7 +43,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Attributes',
-        href: '/attributes',
+        href: '/admin/attributes',
     },
     {
         title: 'View',
@@ -58,7 +58,7 @@ export default function AttributesShow({ attribute }: AttributesShowProps) {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link href="/attributes">
+                        <Link href="/admin/attributes">
                             <Button variant="ghost" size="sm">
                                 <ArrowLeft className="size-4" />
                             </Button>
@@ -70,7 +70,7 @@ export default function AttributesShow({ attribute }: AttributesShowProps) {
                             </p>
                         </div>
                     </div>
-                    <Link href={`/attributes/${attribute.id}/edit`}>
+                    <Link href={`/admin/attributes/${attribute.id}/edit`}>
                         <Button>
                             <Edit className="size-4" />
                             Edit Attribute

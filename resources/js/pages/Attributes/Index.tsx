@@ -65,7 +65,7 @@ export default function AttributesIndex({ attributes }: AttributesIndexProps) {
     const { flash } = usePage().props;
 
     const handleDelete = (id: number) => {
-        router.delete(`/attributes/${id}`, {
+        router.delete(`/admin/attributes/${id}`, {
             preserveScroll: true,
             onSuccess: () => {
                 setDeleteDialogOpen(null);
@@ -161,14 +161,14 @@ export default function AttributesIndex({ attributes }: AttributesIndexProps) {
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center justify-end gap-2">
                                                             <Link
-                                                                href={`/attributes/${attribute.id}`}
+                                                                href={`/admin/attributes/${attribute.id}`}
                                                             >
                                                                 <Button variant="ghost" size="sm">
                                                                     View
                                                                 </Button>
                                                             </Link>
                                                             <Link
-                                                                href={`/attributes/${attribute.id}/edit`}
+                                                                href={`/admin/attributes/${attribute.id}/edit`}
                                                             >
                                                                 <Button variant="ghost" size="sm">
                                                                     <Pencil className="size-4" />

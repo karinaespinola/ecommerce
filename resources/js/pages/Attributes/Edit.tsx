@@ -36,7 +36,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Attributes',
-        href: '/attributes',
+        href: '/admin/attributes',
     },
     {
         title: 'Edit',
@@ -56,7 +56,7 @@ export default function AttributesEdit({ attribute }: AttributesEditProps) {
         if (!formData.has('is_active')) {
             formData.append('is_active', '0');
         }
-        router.put(`/attributes/${attribute.id}`, formData, {
+        router.put(`/admin/attributes/${attribute.id}`, formData, {
             preserveScroll: true,
             onFinish: () => setProcessing(false),
         });
@@ -68,7 +68,7 @@ export default function AttributesEdit({ attribute }: AttributesEditProps) {
 
             <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                    <Link href="/attributes">
+                    <Link href="/admin/attributes">
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -138,7 +138,7 @@ export default function AttributesEdit({ attribute }: AttributesEditProps) {
                                 <Button type="submit" disabled={processing}>
                                     {processing ? 'Updating...' : 'Update Attribute'}
                                 </Button>
-                                <Link href="/attributes">
+                                <Link href="/admin/attributes">
                                     <Button type="button" variant="outline">
                                         Cancel
                                     </Button>

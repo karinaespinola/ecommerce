@@ -11,7 +11,7 @@ use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\Public\ProductController as PublicProductController;
 use App\Http\Middleware\EnsureCustomerIsAuthenticated;
 use App\Http\Middleware\EnsureAdminIsAuthenticated;
-use App\Services\AdminConfigService;
+use App\Services\DashboardService;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -47,44 +47,10 @@ Route::middleware([EnsureCustomerIsAuthenticated::class])->group(function () {
 Route::middleware([EnsureAdminIsAuthenticated::class])->group(function () {
     // All admin routes use /admin prefix
     Route::prefix('admin')->name('admin.')->group(function () {
-        Route::get('dashboard', function () {
-            $latestOrders = \App\Models\Order::with('customer')
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get();
+        Route::get('dashboard', function (DashboardService $dashboardService) {
+            $data = $dashboardService->getDashboardData();
             
-            // Get low stock threshold from admin config
-            $adminConfigService = new AdminConfigService();
-            $lowStockThreshold = (int) $adminConfigService->get('lowstock_threshold', 2);
-            
-            // Get low stock products (non-variable products with low stock)
-            $lowStockProducts = \App\Models\Product::where('is_variable', false)
-                ->whereNotNull('stock')
-                ->where('stock', '<=', $lowStockThreshold)
-                ->get();
-            
-            // Get variable products with low stock variants
-            $lowStockVariants = \App\Models\ProductVariant::with('product')
-                ->whereNotNull('stock')
-                ->where('stock', '<=', $lowStockThreshold)
-                ->get()
-                ->map(function ($variant) {
-                    return [
-                        'id' => $variant->id,
-                        'product_id' => $variant->product_id,
-                        'product_name' => $variant->product->name,
-                        'stock' => $variant->stock,
-                        'sku' => $variant->sku,
-                        'is_variable' => true,
-                    ];
-                });
-            
-            return Inertia::render('dashboard', [
-                'latestOrders' => $latestOrders,
-                'lowStockProducts' => $lowStockProducts,
-                'lowStockVariants' => $lowStockVariants,
-                'lowStockThreshold' => $lowStockThreshold,
-            ]);
+            return Inertia::render('dashboard', $data);
         })->name('dashboard');
 
         Route::resource('categories', CategoryController::class);
