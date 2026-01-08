@@ -65,7 +65,7 @@ export default function CategoriesIndex({ categories }: CategoriesIndexProps) {
     const { flash } = usePage().props;
 
     const handleDelete = (id: number) => {
-        router.delete(`/categories/${id}`, {
+        router.delete(`/admin/categories/${id}`, {
             preserveScroll: true,
             onSuccess: () => {
                 setDeleteDialogOpen(null);
@@ -169,14 +169,14 @@ export default function CategoriesIndex({ categories }: CategoriesIndexProps) {
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center justify-end gap-2">
                                                             <Link
-                                                                href={`/categories/${category.id}`}
+                                                                href={`/admin/categories/${category.id}`}
                                                             >
                                                                 <Button variant="ghost" size="sm">
                                                                     View
                                                                 </Button>
                                                             </Link>
                                                             <Link
-                                                                href={`/categories/${category.id}/edit`}
+                                                                href={`/admin/categories/${category.id}/edit`}
                                                             >
                                                                 <Button variant="ghost" size="sm">
                                                                     <Pencil className="size-4" />

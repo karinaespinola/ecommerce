@@ -3,9 +3,12 @@
 use App\Http\Controllers\AttributeController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\Public\ProductController as PublicProductController;
+use App\Http\Middleware\EnsureCustomerIsAuthenticated;
+use App\Http\Middleware\EnsureAdminIsAuthenticated;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -17,14 +20,23 @@ Route::get('/products/{slug}', [PublicProductController::class, 'show'])
     ->where('slug', '^(?!\d+$)[a-z0-9-]+$')
     ->name('public.products.show');
 
-// Cart routes (public, no auth required)
-Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-Route::put('/cart/{id}', [CartController::class, 'update'])->name('cart.update');
-Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.destroy');
-Route::delete('/cart', [CartController::class, 'clear'])->name('cart.clear');
+// Customer authentication routes
+Route::get('/login', [CustomerAuthController::class, 'login'])->name('customer.login');
+Route::post('/login', [CustomerAuthController::class, 'authenticate'])->name('customer.authenticate');
+Route::get('/register', [CustomerAuthController::class, 'register'])->name('customer.register');
+Route::post('/register', [CustomerAuthController::class, 'store'])->name('customer.register.store');
+Route::post('/logout', [CustomerAuthController::class, 'logout'])->name('customer.logout');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+// Cart routes - view is public, but modifications require authentication
+Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+Route::middleware([EnsureCustomerIsAuthenticated::class])->group(function () {
+    Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+    Route::put('/cart/{id}', [CartController::class, 'update'])->name('cart.update');
+    Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.destroy');
+    Route::delete('/cart', [CartController::class, 'clear'])->name('cart.clear');
+});
+
+Route::middleware([EnsureAdminIsAuthenticated::class, 'verified'])->group(function () {
     // All admin routes use /admin prefix
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('dashboard', function () {

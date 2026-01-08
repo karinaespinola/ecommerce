@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import publicProducts from '@/routes/public/products';
 import cart from '@/routes/cart';
 import { getCsrfToken } from '@/lib/utils';
+import { login } from '@/routes/customer';
 
 interface Category {
     id: number;
@@ -55,6 +56,7 @@ interface ProductsProps {
 }
 
 export default function Products({ products: initialProducts, categories: initialCategories, filters: initialFilters }: ProductsProps) {
+    const { auth } = usePage<SharedData>().props;
     const [searchQuery, setSearchQuery] = useState(initialFilters?.search || '');
     const [categories, setCategories] = useState<Category[]>(initialCategories || []);
     const [products, setProducts] = useState<PaginatedProducts | null>(initialProducts || null);
@@ -152,6 +154,13 @@ export default function Products({ products: initialProducts, categories: initia
     };
 
     const handleAddToCart = async (productId: number, variantId?: number) => {
+        // Check if customer is authenticated
+        if (!auth.customer) {
+            // Redirect to login with intended URL
+            router.visit(login().url + `?intended=${encodeURIComponent(window.location.href)}`);
+            return;
+        }
+
         console.log('Add to cart clicked', { productId, variantId });
         try {
             const csrfToken = getCsrfToken();
@@ -164,7 +173,8 @@ export default function Products({ products: initialProducts, categories: initia
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': csrfToken,
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({

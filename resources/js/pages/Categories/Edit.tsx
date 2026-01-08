@@ -37,7 +37,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Categories',
-        href: '/categories',
+        href: '/admin/categories',
     },
     {
         title: 'Edit',
@@ -55,7 +55,7 @@ export default function CategoriesEdit({ category }: CategoriesEditProps) {
         setProcessing(true);
 
         const formData = new FormData(e.currentTarget);
-        router.put(`/categories/${category.id}`, formData, {
+        router.put(`/admin/categories/${category.id}`, formData, {
             preserveScroll: true,
             onFinish: () => setProcessing(false),
         });
@@ -67,7 +67,7 @@ export default function CategoriesEdit({ category }: CategoriesEditProps) {
 
             <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                    <Link href="/categories">
+                    <Link href="/admin/categories">
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -170,7 +170,7 @@ export default function CategoriesEdit({ category }: CategoriesEditProps) {
                                 <Button type="submit" disabled={processing}>
                                     {processing ? 'Updating...' : 'Update Category'}
                                 </Button>
-                                <Link href="/categories">
+                                <Link href="/admin/categories">
                                     <Button type="button" variant="outline">
                                         Cancel
                                     </Button>

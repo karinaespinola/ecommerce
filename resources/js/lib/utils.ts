@@ -18,19 +18,20 @@ export function resolveUrl(url: NonNullable<InertiaLinkProps['href']>): string {
 }
 
 /**
- * Get CSRF token from meta tag or cookie
+ * Get CSRF token from cookie or meta tag
+ * Prioritizes cookie token for X-XSRF-TOKEN header compatibility
  */
 export function getCsrfToken(): string | null {
-    // Try meta tag first
-    const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    if (metaToken) return metaToken;
-    
-    // Fallback to XSRF-TOKEN cookie (Laravel's default)
+    // Try XSRF-TOKEN cookie first (Laravel's default, works with X-XSRF-TOKEN header)
     const cookies = document.cookie.split(';');
     const xsrfCookie = cookies.find(cookie => cookie.trim().startsWith('XSRF-TOKEN='));
     if (xsrfCookie) {
         return decodeURIComponent(xsrfCookie.split('=')[1]);
     }
+    
+    // Fallback to meta tag
+    const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (metaToken) return metaToken;
     
     return null;
 }

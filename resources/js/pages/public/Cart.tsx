@@ -79,7 +79,8 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': csrfToken,
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({
@@ -116,7 +117,8 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': csrfToken,
                 },
                 credentials: 'same-origin',
             });
@@ -149,7 +151,8 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': csrfToken,
                 },
                 credentials: 'same-origin',
             });

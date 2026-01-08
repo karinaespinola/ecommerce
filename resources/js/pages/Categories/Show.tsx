@@ -40,7 +40,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Categories',
-        href: '/categories',
+        href: '/admin/categories',
     },
     {
         title: 'View',
@@ -55,7 +55,7 @@ export default function CategoriesShow({ category }: CategoriesShowProps) {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link href="/categories">
+                        <Link href="/admin/categories">
                             <Button variant="ghost" size="sm">
                                 <ArrowLeft className="size-4" />
                             </Button>
@@ -67,7 +67,7 @@ export default function CategoriesShow({ category }: CategoriesShowProps) {
                             </p>
                         </div>
                     </div>
-                    <Link href={`/categories/${category.id}/edit`}>
+                    <Link href={`/admin/categories/${category.id}/edit`}>
                         <Button>
                             <Edit className="size-4" />
                             Edit Category

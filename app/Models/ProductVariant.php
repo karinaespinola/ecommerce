@@ -47,9 +47,11 @@ class ProductVariant extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function shoppingCarts(): HasMany
+    public function shoppingCarts(): BelongsToMany
     {
-        return $this->hasMany(ShoppingCart::class);
+        return $this->belongsToMany(ShoppingCart::class, 'cart_product', 'product_variant_id', 'cart_id')
+            ->withPivot('product_id', 'quantity')
+            ->withTimestamps();
     }
 
     public function images(): MorphMany

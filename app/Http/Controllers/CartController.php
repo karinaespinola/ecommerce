@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
 use App\Services\CartService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,32 +18,11 @@ class CartController extends Controller
     }
 
     /**
-     * Get customer ID from request or session.
-     * Creates a guest customer if none exists.
+     * Get authenticated customer ID.
      */
-    protected function getCustomerId(Request $request): int
+    protected function getCustomerId(): int
     {
-        // Try to get from request first
-        if ($request->has('customer_id')) {
-            $customerId = (int) $request->input('customer_id');
-            Session::put('customer_id', $customerId);
-            return $customerId;
-        }
-
-        // Try to get from session
-        if (Session::has('customer_id')) {
-            return (int) Session::get('customer_id');
-        }
-
-        // Create a guest customer if none exists
-        $guestCustomer = Customer::create([
-            'name' => 'Guest',
-            'email' => 'guest-' . Session::getId() . '@example.com',
-        ]);
-
-        Session::put('customer_id', $guestCustomer->id);
-
-        return $guestCustomer->id;
+        return Auth::guard('customer')->id();
     }
 
     /**
@@ -52,7 +30,15 @@ class CartController extends Controller
      */
     public function index(Request $request): Response
     {
-        $customerId = $this->getCustomerId($request);
+        $customerId = Auth::guard('customer')->id();
+        
+        if (!$customerId) {
+            return Inertia::render('public/Cart', [
+                'cartItems' => [],
+                'cartCount' => 0,
+            ]);
+        }
+
         $cartItems = $this->cartService->getCartItems($customerId);
         $cartCount = $this->cartService->getCartItemCount($customerId);
 
@@ -67,7 +53,15 @@ class CartController extends Controller
      */
     public function show(Request $request): JsonResponse
     {
-        $customerId = $this->getCustomerId($request);
+        $customerId = Auth::guard('customer')->id();
+        
+        if (!$customerId) {
+            return response()->json([
+                'items' => [],
+                'count' => 0,
+            ]);
+        }
+
         $cartItems = $this->cartService->getCartItems($customerId);
         $cartCount = $this->cartService->getCartItemCount($customerId);
 
@@ -100,7 +94,7 @@ class CartController extends Controller
         }
 
         try {
-            $customerId = $this->getCustomerId($request);
+            $customerId = $this->getCustomerId();
             
             $cartItem = $this->cartService->addToCart(
                 $customerId,
@@ -142,7 +136,7 @@ class CartController extends Controller
         ]);
 
         try {
-            $customerId = $this->getCustomerId($request);
+            $customerId = $this->getCustomerId();
             
             $cartItem = $this->cartService->updateCartItem(
                 $customerId,
@@ -178,7 +172,7 @@ class CartController extends Controller
     public function destroy(Request $request, int $id): JsonResponse|RedirectResponse
     {
         try {
-            $customerId = $this->getCustomerId($request);
+            $customerId = $this->getCustomerId();
             
             $this->cartService->removeFromCart($customerId, $id);
             $cartCount = $this->cartService->getCartItemCount($customerId);
@@ -209,7 +203,7 @@ class CartController extends Controller
     public function clear(Request $request): JsonResponse|RedirectResponse
     {
         try {
-            $customerId = $this->getCustomerId($request);
+            $customerId = $this->getCustomerId();
             
             $this->cartService->clearCart($customerId);
 

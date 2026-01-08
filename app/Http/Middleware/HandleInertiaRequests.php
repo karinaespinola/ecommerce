@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\CartService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -38,13 +39,23 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
+        $customer = $request->user('customer');
+        $cartCount = 0;
+
+        if ($customer) {
+            $cartService = app(CartService::class);
+            $cartCount = $cartService->getCartItemCount($customer->id);
+        }
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $request->user(),
+                'customer' => $customer,
             ],
+            'cartCount' => $cartCount,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

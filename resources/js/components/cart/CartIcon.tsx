@@ -1,16 +1,18 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState, useRef } from 'react';
 import cart from '@/routes/cart';
 import { cn } from '@/lib/utils';
+import { SharedData } from '@/types';
 
 export function CartIcon() {
-    const [cartCount, setCartCount] = useState(0);
+    const { cartCount: initialCartCount } = usePage<SharedData>().props;
+    const [cartCount, setCartCount] = useState(initialCartCount ?? 0);
     const [isAnimating, setIsAnimating] = useState(false);
     const [badgePulse, setBadgePulse] = useState(false);
-    const previousCountRef = useRef(0);
+    const previousCountRef = useRef(initialCartCount ?? 0);
 
     const fetchCartCount = async () => {
         try {
@@ -45,8 +47,30 @@ export function CartIcon() {
         }
     };
 
+    // Sync cart count with shared prop when it changes (e.g., after Inertia page updates)
     useEffect(() => {
-        fetchCartCount();
+        if (initialCartCount !== undefined && initialCartCount !== cartCount) {
+            const newCount = initialCartCount;
+            if (newCount > previousCountRef.current) {
+                setIsAnimating(true);
+                setBadgePulse(true);
+                setTimeout(() => setIsAnimating(false), 600);
+                setTimeout(() => setBadgePulse(false), 1000);
+            }
+            previousCountRef.current = newCount;
+            setCartCount(newCount);
+        }
+    }, [initialCartCount, cartCount]);
+
+    useEffect(() => {
+        // Initialize with shared prop value on mount
+        if (initialCartCount !== undefined) {
+            previousCountRef.current = initialCartCount;
+            setCartCount(initialCartCount);
+        } else {
+            // Fallback to API fetch if shared prop is unavailable (backward compatibility)
+            fetchCartCount();
+        }
         
         // Listen for cart updates
         const handleCartUpdate = (event: Event) => {

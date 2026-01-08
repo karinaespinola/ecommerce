@@ -2,7 +2,19 @@ import { InertiaLinkProps } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
 
 export interface Auth {
-    user: User;
+    user: User | null;
+    customer: Customer | null;
+}
+
+export interface Customer {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string | null;
+    email_verified_at: string | null;
+    created_at: string;
+    updated_at: string;
+    [key: string]: unknown;
 }
 
 export interface BreadcrumbItem {
@@ -26,6 +38,7 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    cartCount: number;
     sidebarOpen: boolean;
     [key: string]: unknown;
 }

@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import PublicLayout from '@/layouts/public/public-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,8 @@ import { useState } from 'react';
 import cart from '@/routes/cart';
 import { router } from '@inertiajs/react';
 import { getCsrfToken } from '@/lib/utils';
+import { login } from '@/routes/customer';
+import { type SharedData } from '@/types';
 
 interface Category {
     id: number;
@@ -55,6 +57,7 @@ interface ProductDetailProps {
 }
 
 export default function ProductDetail({ product }: ProductDetailProps) {
+    const { auth } = usePage<SharedData>().props;
     const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
         product.is_variable && product.variants.length > 0 ? product.variants[0] : null
     );
@@ -82,6 +85,13 @@ export default function ProductDetail({ product }: ProductDetailProps) {
     };
 
     const handleAddToCart = async () => {
+        // Check if customer is authenticated
+        if (!auth.customer) {
+            // Redirect to login with intended URL
+            router.visit(login().url + `?intended=${encodeURIComponent(window.location.href)}`);
+            return;
+        }
+
         console.log('Add to cart clicked', { productId: product.id, variantId: selectedVariant?.id, quantity });
         setLoading(true);
         try {
@@ -95,7 +105,8 @@ export default function ProductDetail({ product }: ProductDetailProps) {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': csrfToken,
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({

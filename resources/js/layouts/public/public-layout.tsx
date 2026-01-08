@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
-import { home, login, register } from '@/routes';
+import { home } from '@/routes';
+import { login, register } from '@/routes/customer';
 import { dashboard } from '@/routes/admin';
 import { ShoppingCart, Search, User, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';

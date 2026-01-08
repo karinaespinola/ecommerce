@@ -3,26 +3,49 @@
 namespace App\Services;
 
 use App\Models\ShoppingCart;
+use App\Models\CartProduct;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 class CartService
 {
     /**
+     * Get or create a shopping cart for a customer.
+     */
+    protected function getOrCreateCart(int $customerId): ShoppingCart
+    {
+        return ShoppingCart::firstOrCreate(['customer_id' => $customerId]);
+    }
+
+    /**
      * Get cart items for a customer.
      */
-    public function getCartItems(int $customerId): Collection
+    public function getCartItems(int $customerId): SupportCollection
     {
-        return ShoppingCart::query()
-            ->where('customer_id', $customerId)
-            ->with([
-                'product.images',
-                'product.categories',
-                'productVariant.images',
-                'productVariant.attributes'
-            ])
-            ->get();
+        $cart = ShoppingCart::where('customer_id', $customerId)->first();
+        
+        if (!$cart) {
+            return collect([]);
+        }
+
+        // Get items from pivot table with relationships
+        $items = CartProduct::where('cart_id', $cart->id)
+            ->with(['product.images', 'product.categories', 'productVariant.images', 'productVariant.attributes'])
+            ->get()
+            ->map(function ($cartProduct) {
+                return [
+                    'id' => $cartProduct->id,
+                    'product_id' => $cartProduct->product_id,
+                    'product_variant_id' => $cartProduct->product_variant_id,
+                    'quantity' => $cartProduct->quantity,
+                    'product' => $cartProduct->product,
+                    'product_variant' => $cartProduct->productVariant,
+                ];
+            });
+
+        return $items;
     }
 
     /**
@@ -30,15 +53,20 @@ class CartService
      */
     public function getCartItemCount(int $customerId): int
     {
-        return ShoppingCart::query()
-            ->where('customer_id', $customerId)
+        $cart = ShoppingCart::where('customer_id', $customerId)->first();
+        
+        if (!$cart) {
+            return 0;
+        }
+
+        return CartProduct::where('cart_id', $cart->id)
             ->sum('quantity');
     }
 
     /**
      * Add item to cart.
      */
-    public function addToCart(int $customerId, int $productId, ?int $productVariantId = null, int $quantity = 1): ShoppingCart
+    public function addToCart(int $customerId, int $productId, ?int $productVariantId = null, int $quantity = 1)
     {
         // Validate product exists and is active
         $product = Product::where('id', $productId)
@@ -46,6 +74,7 @@ class CartService
             ->firstOrFail();
 
         // If variant is provided, validate it
+        $variant = null;
         if ($productVariantId) {
             $variant = ProductVariant::where('id', $productVariantId)
                 ->where('product_id', $productId)
@@ -58,72 +87,108 @@ class CartService
             }
         }
 
+        // Get or create cart
+        $cart = $this->getOrCreateCart($customerId);
+
         // Check if item already exists in cart
-        $existingCart = ShoppingCart::query()
-            ->where('customer_id', $customerId)
+        $existingCartProduct = CartProduct::where('cart_id', $cart->id)
             ->where('product_id', $productId)
             ->where('product_variant_id', $productVariantId)
             ->first();
 
-        if ($existingCart) {
+        if ($existingCartProduct) {
             // Update quantity
-            $newQuantity = $existingCart->quantity + $quantity;
+            $newQuantity = $existingCartProduct->quantity + $quantity;
             
             // Check stock if variant exists
-            if ($productVariantId && $variant->stock !== null && $variant->stock < $newQuantity) {
+            if ($productVariantId && $variant && $variant->stock !== null && $variant->stock < $newQuantity) {
                 throw new \Exception('Insufficient stock available.');
             }
 
-            $existingCart->update(['quantity' => $newQuantity]);
-            return $existingCart->fresh(['product.images', 'productVariant.images']);
+            $existingCartProduct->update(['quantity' => $newQuantity]);
+            $existingCartProduct->load(['product.images', 'product.categories', 'productVariant.images', 'productVariant.attributes']);
+
+            return [
+                'id' => $existingCartProduct->id,
+                'product_id' => $existingCartProduct->product_id,
+                'product_variant_id' => $existingCartProduct->product_variant_id,
+                'quantity' => $existingCartProduct->quantity,
+                'product' => $existingCartProduct->product,
+                'product_variant' => $existingCartProduct->productVariant,
+            ];
         }
 
         // Create new cart item
-        return ShoppingCart::create([
-            'customer_id' => $customerId,
+        $cartProduct = CartProduct::create([
+            'cart_id' => $cart->id,
             'product_id' => $productId,
             'product_variant_id' => $productVariantId,
             'quantity' => $quantity,
-        ])->load(['product.images', 'productVariant.images']);
+        ]);
+
+        $cartProduct->load(['product.images', 'product.categories', 'productVariant.images', 'productVariant.attributes']);
+
+        return [
+            'id' => $cartProduct->id,
+            'product_id' => $cartProduct->product_id,
+            'product_variant_id' => $cartProduct->product_variant_id,
+            'quantity' => $cartProduct->quantity,
+            'product' => $cartProduct->product,
+            'product_variant' => $cartProduct->productVariant,
+        ];
     }
 
     /**
      * Update cart item quantity.
      */
-    public function updateCartItem(int $customerId, int $cartId, int $quantity): ShoppingCart
+    public function updateCartItem(int $customerId, int $cartItemId, int $quantity)
     {
-        $cart = ShoppingCart::with(['product', 'productVariant'])
-            ->where('id', $cartId)
-            ->where('customer_id', $customerId)
+        $cart = ShoppingCart::where('customer_id', $customerId)->firstOrFail();
+
+        $cartProduct = CartProduct::where('id', $cartItemId)
+            ->where('cart_id', $cart->id)
             ->firstOrFail();
 
         if ($quantity <= 0) {
-            $cart->delete();
+            $cartProduct->delete();
             throw new \Exception('Item removed from cart.');
         }
 
         // Check stock if variant exists
-        if ($cart->product_variant_id && $cart->productVariant) {
-            if ($cart->productVariant->stock !== null && $cart->productVariant->stock < $quantity) {
+        if ($cartProduct->product_variant_id) {
+            $variant = $cartProduct->productVariant;
+            if ($variant && $variant->stock !== null && $variant->stock < $quantity) {
                 throw new \Exception('Insufficient stock available.');
             }
         }
 
-        $cart->update(['quantity' => $quantity]);
-        return $cart->fresh(['product.images', 'productVariant.images']);
+        $cartProduct->update(['quantity' => $quantity]);
+        $cartProduct->load(['product.images', 'product.categories', 'productVariant.images', 'productVariant.attributes']);
+
+        return [
+            'id' => $cartProduct->id,
+            'product_id' => $cartProduct->product_id,
+            'product_variant_id' => $cartProduct->product_variant_id,
+            'quantity' => $cartProduct->quantity,
+            'product' => $cartProduct->product,
+            'product_variant' => $cartProduct->productVariant,
+        ];
     }
 
     /**
      * Remove item from cart.
      */
-    public function removeFromCart(int $customerId, int $cartId): bool
+    public function removeFromCart(int $customerId, int $cartItemId): bool
     {
-        $cart = ShoppingCart::query()
-            ->where('id', $cartId)
-            ->where('customer_id', $customerId)
+        $cart = ShoppingCart::where('customer_id', $customerId)->firstOrFail();
+
+        $cartProduct = CartProduct::where('id', $cartItemId)
+            ->where('cart_id', $cart->id)
             ->firstOrFail();
 
-        return $cart->delete();
+        $cartProduct->delete();
+
+        return true;
     }
 
     /**
@@ -131,8 +196,12 @@ class CartService
      */
     public function clearCart(int $customerId): int
     {
-        return ShoppingCart::query()
-            ->where('customer_id', $customerId)
-            ->delete();
+        $cart = ShoppingCart::where('customer_id', $customerId)->first();
+        
+        if (!$cart) {
+            return 0;
+        }
+
+        return CartProduct::where('cart_id', $cart->id)->delete();
     }
 }
