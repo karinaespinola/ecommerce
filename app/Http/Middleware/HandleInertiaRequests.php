@@ -40,6 +40,7 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $customer = $request->user('customer');
+        $admin = $request->user('admin');
         $cartCount = 0;
 
         if ($customer) {
@@ -52,7 +53,7 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
-                'user' => $request->user(),
+                'user' => $admin ?? $request->user(),
                 'customer' => $customer,
             ],
             'cartCount' => $cartCount,

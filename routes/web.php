@@ -44,7 +44,7 @@ Route::middleware([EnsureCustomerIsAuthenticated::class])->group(function () {
     Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
 });
 
-Route::middleware([EnsureAdminIsAuthenticated::class, 'verified'])->group(function () {
+Route::middleware([EnsureAdminIsAuthenticated::class])->group(function () {
     // All admin routes use /admin prefix
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('dashboard', function () {
