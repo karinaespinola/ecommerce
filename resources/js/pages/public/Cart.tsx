@@ -25,6 +25,7 @@ interface Product {
 interface ProductVariant {
     id: number;
     price: string;
+    images?: ProductImage[];
     attributes?: Array<{
         id: number;
         name: string;
@@ -52,6 +53,10 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
     const [cartItems, setCartItems] = useState<CartItem[]>(initialCartItems);
     const [loading, setLoading] = useState<Record<number, boolean>>({});
     const [updating, setUpdating] = useState<Record<number, boolean>>({});
+
+    useEffect(() => {
+        setCartItems(initialCartItems);
+    }, [initialCartItems]);
 
     useEffect(() => {
         const handleCartUpdate = () => {
@@ -170,9 +175,11 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
     };
 
     const getItemImage = (item: CartItem): string | null => {
-        if (item.product_variant && item.product_variant.attributes) {
-            // For variants, we'd need variant images - for now use product image
+        // For variable products, check if variant has images first
+        if (item.product_variant && item.product_variant.images && item.product_variant.images.length > 0) {
+            return `/storage/${item.product_variant.images[0].image_path}`;
         }
+        // Fallback to product images
         if (item.product.images && item.product.images.length > 0) {
             return `/storage/${item.product.images[0].image_path}`;
         }
@@ -208,17 +215,33 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
 
     return (
         <PublicLayout title="Shopping Cart">
-            <div className="container mx-auto px-4 py-8">
-                <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
+            <div className="container mx-auto px-4 py-8 max-w-7xl">
+                <div className="mb-8">
+                    <h1 className="text-4xl font-bold tracking-tight mb-2 text-gray-900">Shopping Cart</h1>
+                    <p className="text-muted-foreground">
+                        {cartItems.length === 0 
+                            ? "Your cart is empty" 
+                            : `${cartItems.length} ${cartItems.length === 1 ? 'item' : 'items'} in your cart`}
+                    </p>
+                </div>
 
                 {cartItems.length === 0 ? (
-                    <Card>
-                        <CardContent className="py-12 text-center">
-                            <ShoppingBag className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                            <p className="text-lg text-gray-600 mb-4">Your cart is empty</p>
-                            <Link href={publicProducts.index().url}>
-                                <Button>Continue Shopping</Button>
-                            </Link>
+                    <Card className="border-2 border-dashed">
+                        <CardContent className="py-16 text-center">
+                            <div className="flex flex-col items-center justify-center">
+                                <div className="rounded-full bg-muted p-6 mb-6">
+                                    <ShoppingBag className="h-12 w-12 text-muted-foreground" />
+                                </div>
+                                <h2 className="text-2xl font-semibold mb-2">Your cart is empty</h2>
+                                <p className="text-muted-foreground mb-8 max-w-md">
+                                    Looks like you haven't added anything to your cart yet. Start shopping to fill it up!
+                                </p>
+                                <Link href={publicProducts.index().url}>
+                                    <Button size="lg" className="px-8">
+                                        Continue Shopping
+                                    </Button>
+                                </Link>
+                            </div>
                         </CardContent>
                     </Card>
                 ) : (
@@ -226,123 +249,146 @@ export default function Cart({ cartItems: initialCartItems, cartCount: initialCa
                         {/* Cart Items */}
                         <div className="lg:col-span-2 space-y-4">
                             {cartItems.map((item) => (
-                                <Card key={item.id}>
-                                    <CardContent className="p-4">
-                                        <div className="flex gap-4">
-                                            <Link
-                                                href={publicProducts.show({ slug: item.product.slug }).url}
-                                                className="flex-shrink-0"
-                                            >
-                                                <div className="w-24 h-24 bg-gray-100 rounded overflow-hidden">
-                                                    {getItemImage(item) ? (
-                                                        <img
-                                                            src={getItemImage(item)!}
-                                                            alt={item.product.name}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                                            No Image
-                                                        </div>
-                                                    )}
+                                <div 
+                                    key={item.id} 
+                                    className="bg-white border border-gray-200 rounded-lg p-6 hover:border-gray-300 hover:shadow-sm transition-all"
+                                >
+                                    <div className="flex gap-6">
+                                        <Link
+                                            href={publicProducts.show({ slug: item.product.slug }).url}
+                                            className="flex-shrink-0 group"
+                                        >
+                                            <div className="w-32 h-32 bg-gray-50 rounded-lg overflow-hidden border border-gray-200 group-hover:border-primary/50 transition-colors">
+                                                {getItemImage(item) ? (
+                                                    <img
+                                                        src={getItemImage(item)!}
+                                                        alt={item.product.name}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                                                        No Image
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Link>
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-start gap-4 mb-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <Link href={publicProducts.show({ slug: item.product.slug }).url}>
+                                                        <h3 className="font-semibold text-lg hover:text-primary  text-gray-900 transition-colors mb-1 line-clamp-2">
+                                                            {getItemName(item)}
+                                                        </h3>
+                                                    </Link>
+                                                    <p className="text-lg font-bold text-gray-900">
+                                                        ${Number(getItemPrice(item)).toFixed(2)}
+                                                    </p>
                                                 </div>
-                                            </Link>
+                                                <div className="text-right">
+                                                    <p className="text-xl font-bold text-gray-900">
+                                                        ${(Number(getItemPrice(item)) * item.quantity).toFixed(2)}
+                                                    </p>
+                                                    <p className="text-sm text-gray-500">
+                                                        ${Number(getItemPrice(item)).toFixed(2)} × {item.quantity}
+                                                    </p>
+                                                </div>
+                                            </div>
 
-                                            <div className="flex-1">
-                                                <Link href={publicProducts.show({ slug: item.product.slug }).url}>
-                                                    <h3 className="font-semibold text-lg hover:text-gray-600 mb-2">
-                                                        {getItemName(item)}
-                                                    </h3>
-                                                </Link>
-                                                <p className="text-xl font-bold text-gray-900 mb-4">
-                                                    ${Number(getItemPrice(item)).toFixed(2)}
-                                                </p>
-
-                                                <div className="flex items-center gap-4">
-                                                    {/* Quantity Controls */}
-                                                    <div className="flex items-center gap-2">
+                                            <div className="flex items-center justify-between gap-4 pt-4 border-t border-gray-200">
+                                                {/* Quantity Controls */}
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-sm text-gray-600 mr-2">Quantity:</span>
+                                                    <div className="flex items-center gap-2 border border-gray-300 rounded-md bg-white">
                                                         <Button
-                                                            variant="outline"
+                                                            variant="ghost"
                                                             size="icon"
+                                                            className="h-9 w-9 rounded-r-none hover:bg-gray-100"
                                                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                                             disabled={updating[item.id] || item.quantity <= 1}
                                                         >
                                                             <Minus className="h-4 w-4" />
                                                         </Button>
-                                                        <span className="w-12 text-center font-semibold">
+                                                        <span className="w-12 text-center font-semibold text-base text-gray-900">
                                                             {item.quantity}
                                                         </span>
                                                         <Button
-                                                            variant="outline"
+                                                            variant="ghost"
                                                             size="icon"
+                                                            className="h-9 w-9 rounded-l-none hover:bg-gray-100"
                                                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                                             disabled={updating[item.id]}
                                                         >
                                                             <Plus className="h-4 w-4" />
                                                         </Button>
                                                     </div>
-
-                                                    {/* Remove Button */}
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => removeItem(item.id)}
-                                                        disabled={loading[item.id]}
-                                                    >
-                                                        <Trash2 className="h-4 w-4 text-red-500" />
-                                                    </Button>
-
-                                                    {/* Item Subtotal */}
-                                                    <div className="ml-auto text-lg font-semibold">
-                                                        ${(Number(getItemPrice(item)) * item.quantity).toFixed(2)}
-                                                    </div>
                                                 </div>
+
+                                                {/* Remove Button */}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removeItem(item.id)}
+                                                    disabled={loading[item.id]}
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                >
+                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                                    Remove
+                                                </Button>
                                             </div>
                                         </div>
-                                    </CardContent>
-                                </Card>
+                                    </div>
+                                </div>
                             ))}
 
-                            <Button
-                                variant="outline"
-                                onClick={clearCart}
-                                className="w-full"
-                            >
-                                Clear Cart
-                            </Button>
+                            <div className="pt-4">
+                                <Button
+                                    onClick={clearCart}
+                                    className="w-full bg-black hover:bg-gray-800 text-white border-0"
+                                    size="lg"
+                                >
+                                    Clear Cart
+                                </Button>
+                            </div>
                         </div>
 
                         {/* Order Summary */}
                         <div className="lg:col-span-1">
-                            <Card>
-                                <CardContent className="p-6">
-                                    <h2 className="text-xl font-bold mb-4">Order Summary</h2>
-                                    <div className="space-y-3 mb-6">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Subtotal</span>
-                                            <span className="font-semibold">${subtotal.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Shipping</span>
-                                            <span className="font-semibold">Calculated at checkout</span>
-                                        </div>
-                                        <div className="border-t pt-3">
-                                            <div className="flex justify-between text-lg">
-                                                <span className="font-semibold">Total</span>
-                                                <span className="font-bold">${subtotal.toFixed(2)}</span>
-                                            </div>
+                            <div className="bg-white border border-gray-200 rounded-lg p-6 sticky top-8">
+                                <h2 className="text-2xl font-bold mb-6 text-gray-900">Order Summary</h2>
+                                <div className="space-y-4 mb-6">
+                                    <div className="flex justify-between text-base">
+                                        <span className="text-gray-600">Subtotal</span>
+                                        <span className="font-semibold text-gray-900">${subtotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-base">
+                                        <span className="text-gray-600">Shipping</span>
+                                        <span className="font-semibold text-sm text-gray-500">Calculated at checkout</span>
+                                    </div>
+                                    <div className="flex justify-between text-base">
+                                        <span className="text-gray-600">Tax</span>
+                                        <span className="font-semibold text-sm text-gray-500">Calculated at checkout</span>
+                                    </div>
+                                    <div className="border-t border-gray-200 pt-4 mt-4">
+                                        <div className="flex justify-between text-xl">
+                                            <span className="font-bold text-gray-900">Total</span>
+                                            <span className="font-bold text-gray-900">${subtotal.toFixed(2)}</span>
                                         </div>
                                     </div>
-                                    <Button className="w-full mb-4" size="lg">
-                                        Proceed to Checkout
-                                    </Button>
-                                    <Link href={publicProducts.index().url}>
-                                        <Button variant="outline" className="w-full">
+                                </div>
+                                <div className="space-y-3">
+                                    <Link href="/checkout" className="block">
+                                        <Button className="w-full bg-[#b67778] hover:bg-[#a06667] text-white border-0" size="lg">
+                                            Proceed to Checkout
+                                        </Button>
+                                    </Link>
+                                    <Link href={publicProducts.index().url} className="block">
+                                        <Button variant="outline" className="w-full" size="lg">
                                             Continue Shopping
                                         </Button>
                                     </Link>
-                                </CardContent>
-                            </Card>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

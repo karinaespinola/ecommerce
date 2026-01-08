@@ -185,12 +185,12 @@ export default function ProductDetail({ product }: ProductDetailProps) {
 
     return (
         <PublicLayout title={product.name}>
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto px-4 py-8 max-w-7xl">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Product Images */}
                     <div>
-                        <Card className="overflow-hidden">
-                            <div className="aspect-square bg-gray-100 relative">
+                        <Card className="overflow-hidden border border-gray-200">
+                            <div className="aspect-square bg-gray-50 relative">
                                 {getPrimaryImage() ? (
                                     <img
                                         src={getPrimaryImage()!}
@@ -198,7 +198,7 @@ export default function ProductDetail({ product }: ProductDetailProps) {
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
                                         No Image Available
                                     </div>
                                 )}
@@ -209,7 +209,7 @@ export default function ProductDetail({ product }: ProductDetailProps) {
                                 {getProductImages().slice(0, 4).map((image) => (
                                     <div
                                         key={image.id}
-                                        className="aspect-square bg-gray-100 rounded overflow-hidden cursor-pointer hover:opacity-75"
+                                        className="aspect-square bg-gray-50 rounded-lg overflow-hidden cursor-pointer border border-gray-200 hover:border-gray-300 hover:opacity-75 transition-all"
                                     >
                                         <img
                                             src={`/storage/${image.image_path}`}
@@ -223,35 +223,37 @@ export default function ProductDetail({ product }: ProductDetailProps) {
                     </div>
 
                     {/* Product Info */}
-                    <div>
-                        <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
+                    <div className="space-y-6">
+                        <div>
+                            <h1 className="text-4xl font-bold tracking-tight mb-4 text-gray-900">{product.name}</h1>
 
-                        {product.categories.length > 0 && (
-                            <div className="flex gap-2 mb-4">
-                                {product.categories.map((cat) => (
-                                    <Badge key={cat.id} variant="secondary">
-                                        {cat.name}
-                                    </Badge>
-                                ))}
+                            {product.categories.length > 0 && (
+                                <div className="flex gap-2 mb-6">
+                                    {product.categories.map((cat) => (
+                                        <Badge key={cat.id} variant="secondary">
+                                            {cat.name}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="text-4xl font-bold mb-6 text-gray-900">
+                                ${Number(getProductPrice()).toFixed(2)}
                             </div>
-                        )}
-
-                        <div className="text-4xl font-bold mb-6">
-                            ${Number(getProductPrice()).toFixed(2)}
                         </div>
 
                         {product.description && (
                             <div className="mb-6">
-                                <h2 className="font-semibold mb-2">Description</h2>
-                                <p className="text-gray-600">{product.description}</p>
+                                <h2 className="text-lg font-semibold mb-3 text-gray-900">Description</h2>
+                                <p className="text-base text-gray-700 leading-relaxed">{product.description}</p>
                             </div>
                         )}
 
                         {/* Variant Selection */}
                         {product.is_variable && product.variants.length > 0 && (
                             <div className="mb-6">
-                                <h3 className="font-semibold mb-3">Select Variant</h3>
-                                <div className="space-y-2">
+                                <h3 className="text-lg font-semibold mb-3 text-gray-900">Select Variant</h3>
+                                <div className="space-y-3">
                                     {product.variants
                                         .filter(v => v.is_active)
                                         .map((variant) => (
@@ -261,26 +263,32 @@ export default function ProductDetail({ product }: ProductDetailProps) {
                                                     setSelectedVariant(variant);
                                                     setQuantity(1);
                                                 }}
-                                                className={`w-full p-3 border-2 rounded-lg text-left transition-colors ${
+                                                className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
                                                     selectedVariant?.id === variant.id
                                                         ? 'border-gray-900 bg-gray-50'
-                                                        : 'border-gray-200 hover:border-gray-300'
+                                                        : 'border-gray-200 hover:border-gray-300 bg-white'
                                                 }`}
                                             >
                                                 <div className="flex justify-between items-center">
-                                                    <div>
-                                                        {variant.attributes.map((attr, idx) => (
-                                                            <span key={attr.id}>
-                                                                {attr.name}: {attr.pivot.value}
-                                                                {idx < variant.attributes.length - 1 && ', '}
-                                                            </span>
-                                                        ))}
-                                                        <span className="ml-2 font-semibold">
+                                                    <div className="flex-1">
+                                                        <div className="text-base text-gray-900 mb-1">
+                                                            {variant.attributes.map((attr, idx) => (
+                                                                <span key={attr.id}>
+                                                                    {attr.name}: <span className="font-medium">{attr.pivot.value}</span>
+                                                                    {idx < variant.attributes.length - 1 && ', '}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-lg font-bold text-gray-900">
                                                             ${Number(variant.price).toFixed(2)}
                                                         </span>
                                                     </div>
                                                     {variant.stock !== null && (
-                                                        <span className="text-sm text-gray-500">
+                                                        <span className={`text-sm font-medium ml-4 ${
+                                                            variant.stock > 0 
+                                                                ? 'text-gray-600' 
+                                                                : 'text-red-600'
+                                                        }`}>
                                                             {variant.stock > 0
                                                                 ? `${variant.stock} in stock`
                                                                 : 'Out of stock'}
@@ -295,35 +303,39 @@ export default function ProductDetail({ product }: ProductDetailProps) {
 
                         {/* Quantity Selector */}
                         <div className="mb-6">
-                            <h3 className="font-semibold mb-3">Quantity</h3>
-                            <div className="flex items-center gap-4">
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={decrementQuantity}
-                                    disabled={quantity <= 1}
-                                >
-                                    <Minus className="h-4 w-4" />
-                                </Button>
-                                <span className="text-xl font-semibold w-12 text-center">{quantity}</span>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={incrementQuantity}
-                                    disabled={
-                                        product.is_variable && selectedVariant && selectedVariant.stock !== null
-                                            ? quantity >= selectedVariant.stock
-                                            : false
-                                    }
-                                >
-                                    <Plus className="h-4 w-4" />
-                                </Button>
+                            <h3 className="text-lg font-semibold mb-3 text-gray-900">Quantity</h3>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 border border-gray-300 rounded-md bg-white">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-9 w-9 rounded-r-none bg-black hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                        onClick={decrementQuantity}
+                                        disabled={quantity <= 1}
+                                    >
+                                        <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <span className="w-12 text-center font-semibold text-base text-gray-900">{quantity}</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-9 w-9 rounded-l-none bg-black hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                        onClick={incrementQuantity}
+                                        disabled={
+                                            product.is_variable && selectedVariant && selectedVariant.stock !== null
+                                                ? quantity >= selectedVariant.stock
+                                                : false
+                                        }
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
                         {/* Add to Cart Button */}
                         <Button
-                            className="w-full mb-4"
+                            className="w-full mb-4 bg-gray-900 hover:bg-gray-800 text-white border-0"
                             size="lg"
                             onClick={handleAddToCart}
                             disabled={loading || isOutOfStock()}
@@ -333,14 +345,16 @@ export default function ProductDetail({ product }: ProductDetailProps) {
                         </Button>
 
                         {/* Additional Info */}
-                        <div className="mt-6 space-y-2 text-sm text-gray-600">
-                            <div className="flex items-center gap-2">
-                                <span>SKU:</span>
-                                <span className="font-medium">
-                                    {product.is_variable && selectedVariant
-                                        ? selectedVariant.sku || 'N/A'
-                                        : 'N/A'}
-                                </span>
+                        <div className="pt-6 border-t border-gray-200">
+                            <div className="space-y-2 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-gray-600">SKU:</span>
+                                    <span className="font-medium text-gray-900">
+                                        {product.is_variable && selectedVariant
+                                            ? selectedVariant.sku || 'N/A'
+                                            : 'N/A'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>

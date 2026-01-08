@@ -2,7 +2,7 @@ import { type ReactNode } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
 import { home } from '@/routes';
-import { login, register } from '@/routes/customer';
+import { login, register, logout } from '@/routes/customer';
 import { dashboard } from '@/routes/admin';
 import { ShoppingCart, Search, User, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,19 +33,23 @@ export default function PublicLayout({ children, title = 'Shop' }: PublicLayoutP
                 {/* Top Bar */}
                 <div className="bg-gray-100 border-b border-gray-200 py-2">
                     <div className="container mx-auto px-4">
-                        <div className="flex items-center justify-between text-sm text-gray-600">
-                            <div className="flex items-center gap-2">
-                                <span>Download App</span>
-                            </div>
+                        <div className="flex items-center justify-end text-sm text-gray-600">
                             <div className="flex items-center gap-4">
                                 <Link href="#" className="hover:text-gray-900">About</Link>
                                 <Link href="#" className="hover:text-gray-900">Contact</Link>
-                                {auth.user ? (
-                                    <Link href={dashboard().url} className="hover:text-gray-900">Dashboard</Link>
+                                {auth.customer ? (
+                                    <Link
+                                        href={logout()}
+                                        as="button"
+                                        method="post"
+                                        className="hover:text-gray-900"
+                                    >
+                                        Logout
+                                    </Link>
                                 ) : (
                                     <>
                                         <Link href={register()} className="hover:text-gray-900">Sign Up</Link>
-                                        <Link href={login()} className="hover:text-gray-900">Login</Link>
+                                        <Link href={login()} className="hover:text-gray-900">Log In</Link>
                                     </>
                                 )}
                             </div>
@@ -81,7 +85,7 @@ export default function PublicLayout({ children, title = 'Shop' }: PublicLayoutP
                                 <div className="relative">
                                     <CartIcon />
                                 </div>
-                                {auth.user && (
+                                {auth.customer && (
                                     <Link href={dashboard().url}>
                                         <Button variant="ghost" size="icon">
                                             <User className="h-5 w-5" />

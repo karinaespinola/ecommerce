@@ -32,7 +32,7 @@ import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { dashboard } from '@/routes/admin';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Menu, Package, Search, Tag } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Menu, Package, Search, Settings, Tag } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 
@@ -51,6 +51,11 @@ const mainNavItems: NavItem[] = [
         title: 'Categories',
         href: '/admin/categories',
         icon: Tag,
+    },
+    {
+        title: 'Settings',
+        href: '/admin/config',
+        icon: Settings,
     },
 ];
 

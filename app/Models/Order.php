@@ -19,6 +19,10 @@ class Order extends Model
         'tax',
         'shipping',
         'total',
+        'email',
+        'phone',
+        'shipping_address',
+        'billing_address',
     ];
 
     protected function casts(): array
@@ -28,6 +32,8 @@ class Order extends Model
             'tax' => 'decimal:2',
             'shipping' => 'decimal:2',
             'total' => 'decimal:2',
+            'shipping_address' => 'array',
+            'billing_address' => 'array',
         ];
     }
 

@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\AdminConfigController;
 use App\Http\Controllers\AttributeController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImageController;
@@ -34,6 +36,11 @@ Route::middleware([EnsureCustomerIsAuthenticated::class])->group(function () {
     Route::put('/cart/{id}', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.destroy');
     Route::delete('/cart', [CartController::class, 'clear'])->name('cart.clear');
+    
+    // Checkout routes
+    Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+    Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
 });
 
 Route::middleware([EnsureAdminIsAuthenticated::class, 'verified'])->group(function () {
@@ -47,6 +54,9 @@ Route::middleware([EnsureAdminIsAuthenticated::class, 'verified'])->group(functi
         Route::get('products', [ProductController::class, 'index'])->name('products.index');
         Route::resource('products', ProductController::class)->except(['index']);
         Route::resource('attributes', AttributeController::class);
+        
+        Route::get('config', [AdminConfigController::class, 'index'])->name('config.index');
+        Route::put('config', [AdminConfigController::class, 'update'])->name('config.update');
 
         // Image routes for products and product variants
         // Allowed types: 'products' or 'product-variants'
