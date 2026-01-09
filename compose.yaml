@@ -62,6 +62,14 @@ services:
             - '${PUSHER_METRICS_PORT:-9601}:9601'
         networks:
             - sail
+    mailhog:
+        image: 'mailhog/mailhog:latest'
+        platform: linux/amd64
+        ports:
+            - '${MAILHOG_PORT:-1025}:1025'
+            - '8025:8025'
+        networks:
+            - sail
 networks:
     sail:
         driver: bridge

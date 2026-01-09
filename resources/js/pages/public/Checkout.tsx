@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage, router } from '@inertiajs/react';
 import PublicLayout from '@/layouts/public/public-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { ShoppingBag, ArrowLeft } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import cart from '@/routes/cart';
 import publicProducts from '@/routes/public/products';
+import ValidationErrors from '@/components/validation-errors';
 
 interface ProductImage {
     id: number;
@@ -64,6 +65,7 @@ interface CheckoutProps {
 
 export default function Checkout({ cartItems, cartCount, subtotal, customer }: CheckoutProps) {
     const [sameAsBilling, setSameAsBilling] = useState(true);
+    const { flash } = usePage().props as { flash?: { success?: string; error?: string } };
 
     const { data, setData, post, processing, errors } = useForm({
         email: customer.email || '',
@@ -92,7 +94,20 @@ export default function Checkout({ cartItems, cartCount, subtotal, customer }: C
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post('/checkout');
+        
+        // Ensure shipping address matches billing if "same as billing" is checked
+        const submitData = sameAsBilling 
+            ? { ...data, shipping_address: { ...data.billing_address } }
+            : data;
+        
+        router.post('/checkout', submitData, {
+            onError: (errors) => {
+                console.error('Checkout errors:', errors);
+            },
+            onSuccess: () => {
+                // Success is handled by redirect
+            },
+        });
     };
 
     const handleSameAsBillingChange = (checked: boolean) => {
@@ -177,6 +192,21 @@ export default function Checkout({ cartItems, cartCount, subtotal, customer }: C
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Checkout Form */}
                         <div className="lg:col-span-2 space-y-4">
+                            {/* Flash Messages */}
+                            {flash?.error && (
+                                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+                                    {flash.error}
+                                </div>
+                            )}
+                            {flash?.success && (
+                                <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-200">
+                                    {flash.success}
+                                </div>
+                            )}
+                            {/* Validation Errors */}
+                            {Object.keys(errors).length > 0 && (
+                                <ValidationErrors errors={errors} />
+                            )}
                             {/* Contact Information */}
                             <div className="bg-white border border-gray-200 rounded-lg p-6">
                                 <h2 className="text-2xl font-bold mb-6 text-gray-900">Contact Information</h2>

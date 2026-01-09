@@ -25,6 +25,7 @@ interface Product {
     slug: string;
     description: string | null;
     price: number;
+    stock: number | null;
     sku: string | null;
     is_active: boolean;
     is_variable: boolean;
@@ -136,6 +137,25 @@ export default function ProductsShow({ product }: ProductsShowProps) {
                                     </div>
                                 </div>
                             </div>
+                            {!product.is_variable && (
+                                <div>
+                                    <div className="text-sm font-medium text-muted-foreground">
+                                        Stock
+                                    </div>
+                                    <div className="mt-1 text-base">
+                                        {product.stock !== null ? (
+                                            <span className="flex items-center gap-2">
+                                                <Package className="size-4" />
+                                                {product.stock} units
+                                            </span>
+                                        ) : (
+                                            <span className="text-muted-foreground italic">
+                                                Not tracked
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                             <div className="flex items-center gap-4">
                                 <div>
                                     <div className="text-sm font-medium text-muted-foreground">

@@ -75,9 +75,15 @@ class CheckoutController extends Controller
                 ->with('success', 'Order placed successfully!');
 
         } catch (\Exception $e) {
+            \Log::error('Checkout failed', [
+                'customer_id' => $customerId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to process order. Please try again.');
+                ->with('error', 'Failed to process order: ' . $e->getMessage());
         }
     }
 

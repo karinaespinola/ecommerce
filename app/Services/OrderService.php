@@ -14,7 +14,8 @@ use Illuminate\Support\Str;
 class OrderService
 {
     public function __construct(
-        protected CartService $cartService
+        protected CartService $cartService,
+        protected StockService $stockService
     ) {
     }
 
@@ -105,7 +106,8 @@ class OrderService
             ]);
 
             // Decrease stock (with row locking to prevent race conditions)
-            $this->decreaseStock($item);
+            $this->stockService->decreaseStock($item);
+            
         }
     }
 
@@ -122,25 +124,7 @@ class OrderService
         return null;
     }
 
-    /**
-     * Decrease stock for product or variant.
-     */
-    protected function decreaseStock(array $item): void
-    {
-        if ($item['product_variant_id']) {
-            // Product has variant - decrease variant stock
-            $variant = ProductVariant::lockForUpdate()->find($item['product_variant_id']);
-            if ($variant && $variant->stock !== null) {
-                $variant->decrement('stock', $item['quantity']);
-            }
-        } else {
-            // Product without variant - decrease product stock
-            $product = Product::lockForUpdate()->find($item['product_id']);
-            if ($product && $product->stock !== null) {
-                $product->decrement('stock', $item['quantity']);
-            }
-        }
-    }
+
 
     /**
      * Update customer default addresses.

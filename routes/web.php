@@ -14,7 +14,6 @@ use App\Http\Middleware\EnsureAdminIsAuthenticated;
 use App\Services\DashboardService;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Laravel\Fortify\Features;
 
 // Public web routes (render Inertia pages) - must be defined before auth routes
 Route::get('/', [PublicProductController::class, 'index'])->name('home');
