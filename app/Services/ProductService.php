@@ -39,7 +39,6 @@ class ProductService
         
         Log::debug('Here are the filters', compact('filters'));
         if (isset($filters['search'])) {
-            Log::debug('Search:', $filters['search']);
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")

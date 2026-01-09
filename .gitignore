@@ -9,6 +9,9 @@
 /resources/js/wayfinder
 /storage/*.key
 /storage/pail
+# Allow tracking website assets in storage/app/public/website
+!/storage/app/public/website
+!/storage/app/public/website/**
 /vendor
 .DS_Store
 .env

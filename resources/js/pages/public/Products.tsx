@@ -11,6 +11,7 @@ import publicProducts from '@/routes/public/products';
 import cart from '@/routes/cart';
 import { getCsrfToken } from '@/lib/utils';
 import { login } from '@/routes/customer';
+import HeroCarousel from '@/components/HeroCarousel';
 
 interface Category {
     id: number;
@@ -238,25 +239,8 @@ export default function Products({ products: initialProducts, categories: initia
     return (
         <PublicLayout title="Products">
             <div className="container mx-auto px-4 py-8">
-                {/* Hero Section */}
-                <div 
-                    className="relative rounded-lg p-12 mb-12 overflow-hidden min-h-[400px] flex items-center"
-                    style={{
-                        backgroundImage: 'url(/storage/website/hero.png)',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat',
-                    }}
-                >
-                    {/* Overlay for better text readability */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-black/30"></div>
-                    <div className="relative z-10 max-w-2xl text-white">
-                        <h1 className="text-4xl font-bold mb-4">#Big Fashion Sale</h1>
-                        <p className="text-xl mb-2">Limited Time Offer!</p>
-                        <p className="text-3xl font-bold mb-4">Up to 50% OFF!</p>
-                        <p className="text-lg">Redefine Your Everyday Style</p>
-                    </div>
-                </div>
+                {/* Hero Carousel */}
+                <HeroCarousel />
 
                 {/* Categories Section */}
                 {categories && categories.length > 0 && (
@@ -291,19 +275,27 @@ export default function Products({ products: initialProducts, categories: initia
                     </div>
                 )}
 
-                {/* Search Bar */}
-                <form onSubmit={handleSearch} className="mb-8">
-                    <div className="relative max-w-md">
-                        <Input
-                            type="text"
-                            placeholder="Search products..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10"
-                        />
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                {/* Stats Section */}
+                <section className="mb-12 py-12 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                        <div className="animate-fade-in">
+                            <div className="text-4xl md:text-5xl font-bold text-emerald-600 mb-2">10K+</div>
+                            <div className="text-gray-600 font-medium">Happy Customers</div>
+                        </div>
+                        <div className="animate-fade-in-delay-1">
+                            <div className="text-4xl md:text-5xl font-bold text-emerald-600 mb-2">500+</div>
+                            <div className="text-gray-600 font-medium">Products</div>
+                        </div>
+                        <div className="animate-fade-in-delay-2">
+                            <div className="text-4xl md:text-5xl font-bold text-emerald-600 mb-2">50K+</div>
+                            <div className="text-gray-600 font-medium">Orders Delivered</div>
+                        </div>
+                        <div className="animate-fade-in-delay-3">
+                            <div className="text-4xl md:text-5xl font-bold text-emerald-600 mb-2">4.8★</div>
+                            <div className="text-gray-600 font-medium">Average Rating</div>
+                        </div>
                     </div>
-                </form>
+                </section>
 
                 {/* Error Message */}
                 {error && (
@@ -373,6 +365,70 @@ export default function Products({ products: initialProducts, categories: initia
                     </div>
                 )}
 
+                {/* Testimonials Section */}
+                <section className="my-16">
+                    <h2 className="text-3xl font-bold mb-8 text-center text-gray-900">What Our Customers Say</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow animate-fade-in">
+                            <div className="flex items-center mb-4">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-lg mr-4">
+                                    JD
+                                </div>
+                                <div>
+                                    <div className="font-semibold text-gray-900">John Doe</div>
+                                    <div className="text-sm text-gray-500">Verified Customer</div>
+                                </div>
+                            </div>
+                            <div className="flex mb-3 text-yellow-400">
+                                {'★★★★★'.split('').map((star, i) => (
+                                    <span key={i}>{star}</span>
+                                ))}
+                            </div>
+                            <p className="text-gray-600 italic">
+                                "Amazing quality products and fast shipping! I've been shopping here for months and always satisfied."
+                            </p>
+                        </div>
+                        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow animate-fade-in-delay-1">
+                            <div className="flex items-center mb-4">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg mr-4">
+                                    SM
+                                </div>
+                                <div>
+                                    <div className="font-semibold text-gray-900">Sarah Miller</div>
+                                    <div className="text-sm text-gray-500">Verified Customer</div>
+                                </div>
+                            </div>
+                            <div className="flex mb-3 text-yellow-400">
+                                {'★★★★★'.split('').map((star, i) => (
+                                    <span key={i}>{star}</span>
+                                ))}
+                            </div>
+                            <p className="text-gray-600 italic">
+                                "Best online shopping experience! Great prices, excellent customer service, and products arrive exactly as described."
+                            </p>
+                        </div>
+                        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow animate-fade-in-delay-2">
+                            <div className="flex items-center mb-4">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold text-lg mr-4">
+                                    MW
+                                </div>
+                                <div>
+                                    <div className="font-semibold text-gray-900">Mike Wilson</div>
+                                    <div className="text-sm text-gray-500">Verified Customer</div>
+                                </div>
+                            </div>
+                            <div className="flex mb-3 text-yellow-400">
+                                {'★★★★★'.split('').map((star, i) => (
+                                    <span key={i}>{star}</span>
+                                ))}
+                            </div>
+                            <p className="text-gray-600 italic">
+                                "Silver Wings has become my go-to store. Quality products, competitive prices, and super reliable delivery!"
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
                 {/* Pagination */}
                 {products && products.last_page > 1 && (
                     <div className="mt-8 flex justify-center gap-2">
@@ -390,6 +446,38 @@ export default function Products({ products: initialProducts, categories: initia
                         ))}
                     </div>
                 )}
+
+                {/* Newsletter Section */}
+                <section className="my-16 bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg p-8 md:p-12 text-white">
+                    <div className="max-w-2xl mx-auto text-center animate-fade-in">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4">Stay Updated</h2>
+                        <p className="text-emerald-100 mb-6 text-lg">
+                            Subscribe to our newsletter and get exclusive deals, new product alerts, and special offers delivered to your inbox.
+                        </p>
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                const form = e.target as HTMLFormElement;
+                                const emailInput = form.querySelector('input[type="email"]') as HTMLInputElement;
+                                if (emailInput && emailInput.value) {
+                                    alert('Thank you for subscribing! We\'ll be in touch soon.');
+                                    emailInput.value = '';
+                                }
+                            }}
+                            className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto"
+                        >
+                            <Input
+                                type="email"
+                                placeholder="Enter your email"
+                                required
+                                className="flex-1 bg-white text-gray-900 placeholder-gray-500"
+                            />
+                            <Button type="submit" size="lg" className="bg-white text-emerald-600 hover:bg-gray-100">
+                                Subscribe
+                            </Button>
+                        </form>
+                    </div>
+                </section>
             </div>
         </PublicLayout>
     );
