@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 class DashboardService
 {
@@ -62,7 +63,7 @@ class DashboardService
     /**
      * Get variable products with low stock variants.
      */
-    public function getLowStockVariants(): Collection
+    public function getLowStockVariants(): SupportCollection
     {
         $threshold = $this->getLowStockThreshold();
 

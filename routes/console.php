@@ -10,4 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('app:send-sales-report-to-admin')
     ->timezone('America/New_York')
-    ->dailyAt('20:42');
+    ->dailyAt('22:53');
