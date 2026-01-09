@@ -23,14 +23,24 @@ class ProductController extends Controller
      */
     public function index(Request $request): Response|JsonResponse
     {
+        $search = trim($request->input('search', ''));
+        $categoryId = $request->integer('category_id', 0);
+        
         $filters = [
             'is_active' => true,
-            'search' => $request->string('search')->toString(),
         ];
+        
+        if (!empty($search)) {
+            $filters['search'] = $search;
+        }
+        
+        if ($categoryId > 0) {
+            $filters['category_id'] = $categoryId;
+        }
 
         $products = $this->productService->getAll(
             $request->integer('per_page', 12),
-            array_filter($filters, fn($value) => $value !== null && $value !== '')
+            $filters
         );
 
         // Format products for public display
@@ -49,7 +59,7 @@ class ProductController extends Controller
         return Inertia::render('public/Products', [
             'products' => $products,
             'categories' => $categories,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'category_id']),
         ]);
     }
 

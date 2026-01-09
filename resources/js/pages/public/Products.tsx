@@ -53,12 +53,14 @@ interface ProductsProps {
     categories?: Category[];
     filters?: {
         search?: string;
+        category_id?: number;
     };
 }
 
 export default function Products({ products: initialProducts, categories: initialCategories, filters: initialFilters }: ProductsProps) {
     const { auth } = usePage<SharedData>().props;
     const [searchQuery, setSearchQuery] = useState(initialFilters?.search || '');
+    const [categoryId, setCategoryId] = useState<number | null>(initialFilters?.category_id || null);
     const [categories, setCategories] = useState<Category[]>(initialCategories || []);
     const [products, setProducts] = useState<PaginatedProducts | null>(initialProducts || null);
     const [loading, setLoading] = useState(!initialProducts);
@@ -95,7 +97,7 @@ export default function Products({ products: initialProducts, categories: initia
     }, [initialCategories]);
 
     // Fetch products from API
-    const fetchProducts = async (page: number = 1, search?: string) => {
+    const fetchProducts = async (page: number = 1, search?: string, categoryId?: number | null) => {
         setLoading(true);
         setError(null);
         try {
@@ -104,6 +106,9 @@ export default function Products({ products: initialProducts, categories: initia
             params.append('page', page.toString());
             if (search) {
                 params.append('search', search);
+            }
+            if (categoryId) {
+                params.append('category_id', categoryId.toString());
             }
 
             const url = `/api/products?${params.toString()}`;
@@ -144,14 +149,14 @@ export default function Products({ products: initialProducts, categories: initia
     // Only fetch products from API on mount if not provided via props
     useEffect(() => {
         if (!initialProducts) {
-            fetchProducts(1, searchQuery || undefined);
+            fetchProducts(1, searchQuery || undefined, categoryId);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run on mount
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        fetchProducts(1, searchQuery || undefined);
+        fetchProducts(1, searchQuery || undefined, categoryId);
     };
 
     const handleAddToCart = async (productId: number, variantId?: number) => {
@@ -245,15 +250,31 @@ export default function Products({ products: initialProducts, categories: initia
                 {/* Categories Section */}
                 {categories && categories.length > 0 && (
                     <div className="mb-12">
-                        <h2 className="text-3xl font-bold mb-6 text-gray-900">Shop by Category</h2>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-3xl font-bold text-gray-900">Shop by Category</h2>
+                            {categoryId && (
+                                <Link
+                                    href="/products"
+                                    className="text-sm text-gray-600 hover:text-gray-900 underline"
+                                >
+                                    Clear filter
+                                </Link>
+                            )}
+                        </div>
                         <div className="flex flex-wrap gap-6 justify-center sm:justify-start">
                             {categories.map((category) => (
                                 <Link
                                     key={category.id}
-                                    href="/products"
-                                    className="group flex flex-col items-center gap-2 hover:opacity-80 transition-opacity"
+                                    href={`/products?category_id=${category.id}`}
+                                    className={`group flex flex-col items-center gap-2 hover:opacity-80 transition-opacity ${
+                                        categoryId === category.id ? 'opacity-100' : ''
+                                    }`}
                                 >
-                                    <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 group-hover:border-gray-400 transition-colors">
+                                    <div className={`w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 transition-colors ${
+                                        categoryId === category.id 
+                                            ? 'border-emerald-500 ring-2 ring-emerald-200' 
+                                            : 'border-gray-200 group-hover:border-gray-400'
+                                    }`}>
                                         {category.image ? (
                                             <img
                                                 src={`/storage/${category.image}`}
@@ -437,7 +458,7 @@ export default function Products({ products: initialProducts, categories: initia
                                 key={page}
                                 variant={products.current_page === page ? 'default' : 'outline'}
                                 onClick={() => {
-                                    fetchProducts(page, searchQuery || undefined);
+                                    fetchProducts(page, searchQuery || undefined, categoryId);
                                 }}
                                 disabled={loading}
                             >

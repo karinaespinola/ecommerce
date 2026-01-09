@@ -37,13 +37,12 @@ class ProductService
             $query->whereHas('categories', fn($q) => $q->where('categories.id', $filters['category_id']));
         }
         
-        Log::debug('Here are the filters', compact('filters'));
-        if (isset($filters['search'])) {
-            $search = $filters['search'];
+        if (isset($filters['search']) && !empty(trim($filters['search']))) {
+            $search = trim($filters['search']);
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%")
-                    ->orWhere('sku', 'like', "%{$search}%");
+                $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($search) . '%'])
+                    ->orWhereRaw('LOWER(description) LIKE ?', ['%' . strtolower($search) . '%'])
+                    ->orWhereRaw('LOWER(sku) LIKE ?', ['%' . strtolower($search) . '%']);
             });
         }
 
