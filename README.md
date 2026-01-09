@@ -1,27 +1,26 @@
-# E-Commerce Platform
+# 🛒 E-Commerce Platform
 
-A modern, full-stack e-commerce platform built with Laravel and React, featuring an admin dashboard for product management and a customer-facing storefront that supports both guest checkout and authenticated user purchases.
+A modern, full-stack e-commerce platform built with Laravel and React, featuring an admin dashboard for product management and a customer-facing storefront for users to browse and purchase products.
 
-## Purpose
+## 🎯 Purpose
 
 This platform provides a complete e-commerce solution with two main interfaces:
 
-1. **Customer Storefront**: A public-facing website where users can:
-   - Browse products and categories
-   - Add items to a shopping cart
-   - Make purchases as **guests** (without creating an account)
-   - Make purchases as **logged-in users** (with account benefits)
-   - View order history (for authenticated users)
+1. **🛍️ Customer Storefront**: A public-facing website where users can:
+   - 🔍 Browse products and categories
+   - 🛒 Add items to a shopping cart
+   - 💳 Make purchases as **logged-in users** (with account benefits)
+   - 📦 View order history (for authenticated users)
 
-2. **Admin Dashboard**: A protected administrative interface where authorized users can:
-   - Manage product catalog (products, categories, variants)
-   - Handle product attributes and images
-   - Monitor orders and inventory
-   - Configure platform settings
+2. **⚙️ Admin Dashboard**: A protected administrative interface where authorized users can:
+   - 📋 Manage product catalog (products, categories, variants)
+   - 🖼️ Handle product attributes and images
+   - 📊 Monitor orders and inventory
+   - ⚙️ Configure platform settings
 
-## Technologies Used
+## 🛠️ Technologies Used
 
-### Backend
+### 🔧 Backend
 
 - **Laravel 12**: Modern PHP framework providing robust backend architecture, routing, and ORM
 - **PHP 8.2+**: Latest PHP version with improved performance and type safety
@@ -29,7 +28,7 @@ This platform provides a complete e-commerce solution with two main interfaces:
 - **Inertia.js**: Seamlessly connects Laravel backend with React frontend, eliminating the need for a separate API
 - **SQLite**: Default database for development (easily configurable for production with MySQL/PostgreSQL)
 
-### Frontend
+### 🎨 Frontend
 
 - **React 19**: Modern React library for building interactive user interfaces
 - **TypeScript**: Type-safe JavaScript for better code quality and developer experience
@@ -40,39 +39,31 @@ This platform provides a complete e-commerce solution with two main interfaces:
 - **Headless UI**: Completely unstyled, fully accessible UI components
 - **Lucide React**: Beautiful icon library
 
-### Development Tools
-
-- **Pest PHP**: Modern PHP testing framework with an elegant syntax
-- **Laravel Pint**: Opinionated PHP code style fixer
+### 🧰 Development Tools
 - **ESLint & Prettier**: Code quality and formatting tools for JavaScript/TypeScript
 - **Laravel Wayfinder**: Type-safe route generation for TypeScript
 
-## Key Features
+## ✨ Key Features
 
-### User Authentication
-- User registration and login
-- Password reset functionality
-- Two-factor authentication support
-- Email verification
-- Session management
+### 🔐 User Authentication
+- 👤 User registration and login
 
-### E-Commerce Functionality
-- **Product Catalog**: Browse products organized by categories
-- **Product Variants**: Products with multiple attributes (size, color, etc.)
-- **Shopping Cart**: Add, update, and remove items from cart
-- **Guest Checkout**: Complete purchases without creating an account
-- **Authenticated Checkout**: Enhanced experience for logged-in users
-- **Order Management**: Track orders and order history
-- **Image Management**: Upload and manage product images
+### 🛒 E-Commerce Functionality
+- **📦 Product Catalog**: Browse products organized by categories
+- **🎨 Product Variants**: Products with multiple attributes (size, color, etc.)
+- **🛒 Shopping Cart**: Add, update, and remove items from cart
+- **💳 Authenticated Checkout**: Enhanced experience for logged-in users
+- **📋 Order Management**: Track orders and order history
+- **🖼️ Image Management**: Upload and manage product images
 
-### Admin Features
-- Product CRUD operations
-- Category management
-- Attribute and variant management
-- Image upload and organization
-- Order tracking and management
+### 👨‍💼 Admin Features
+- 📝 Product CRUD operations
+- 📂 Category management
+- 🏷️ Attribute and variant management
+- 📤 Image upload and organization
+- 📊 Order tracking and management
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 ├── app/
@@ -94,76 +85,80 @@ This platform provides a complete e-commerce solution with two main interfaces:
     └── web.php              # Application routes
 ```
 
-## Getting Started
+## 🚀 Getting Started
 
-### Prerequisites
+### 📋 Prerequisites
 
-- PHP 8.2 or higher
-- Composer
-- Node.js 18+ and npm
-- SQLite (or MySQL/PostgreSQL for production)
+- **🐳 Docker** (must be installed and running)
+- 📥 Git
 
-### Installation
+### 💻 Installation
 
-1. Clone the repository:
+1. **Clone the repository:**
 ```bash
-git clone <repository-url>
+git clone git@github.com:karinaespinola/ecommerce.git
 cd ecommerce
 ```
 
-2. Install PHP dependencies:
+2. **Create the `.env` file by copying the example:**
+```bash
+cp .env.example .env
+```
+
+3. **Install PHP dependencies:**
 ```bash
 composer install
 ```
 
-3. Install JavaScript dependencies:
+4. **Start the Docker containers using Laravel Sail:**
 ```bash
-npm install
+./vendor/bin/sail up
 ```
 
-4. Set up environment:
+> ⚠️ **Important**: Make sure Docker is installed and running before executing this command.
+
+5. **Run database migrations and seeders:**
 ```bash
-cp .env.example .env
-php artisan key:generate
+./vendor/bin/sail artisan migrate:fresh --seed
 ```
 
-5. Run migrations:
+6. **After the containers are up, install JavaScript dependencies:**
 ```bash
-php artisan migrate
+./vendor/bin/sail artisan npm install
 ```
 
-6. Build assets:
+7. **Build and watch for frontend changes:**
 ```bash
-npm run build
+./vendor/bin/sail npm run dev
 ```
 
-### Development
-
-Start the development server:
+8. **Start the queue worker** (run in a separate terminal window/tab):
 ```bash
-composer run dev
+./vendor/bin/sail artisan queue:work
 ```
 
-This will start:
-- Laravel development server
-- Vite dev server for hot module replacement
-- Queue worker
-- Log viewer
-
-## Testing
-
-Run tests using Pest:
+9. **Start the task scheduler** (run in a separate terminal window/tab):
 ```bash
-composer test
+./vendor/bin/sail artisan schedule:work
 ```
 
-## Production Build
+> 💡 **Note**: Steps 8 and 9 should be run in separate terminal windows/tabs as they are long-running processes. The scheduler handles scheduled tasks like daily sales reports.
 
-Build assets for production:
-```bash
-npm run build
-```
+The application is now up and running! 🎉
 
-## License
+### 🌐 Accessing the Application
+
+- **🛍️ Storefront**: Visit [http://localhost](http://localhost) to view the customer-facing store
+- **⚙️ Admin Dashboard**: Visit [http://localhost/admin/login](http://localhost/admin/login) to access the admin panel
+- **📧 MailHog**: Visit [http://localhost:8025](http://localhost:8025) to view and test emails sent by the application
+
+**🔑 Admin Login Credentials:**
+- 📧 Email: `test@example.com`
+- 🔒 Password: `password`
+
+Now you can start customizing your store! 🎨
+
+
+## 📄 License
 
 This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
